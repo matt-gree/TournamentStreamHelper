@@ -1,3 +1,6 @@
 [submodule "pyRio"]
 	path = pyRio
 	url = https://github.com/matt-gree/pyRio
+[submodule "layout"]
+	path = layout
+	url = https://github.com/TournamentStreamHelper/TournamentStreamHelper-layouts.git

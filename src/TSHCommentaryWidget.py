@@ -9,9 +9,13 @@ from .TSHScoreboardPlayerWidget import TSHScoreboardPlayerWidget
 from .Helpers.TSHBadWordFilter import TSHBadWordFilter
 from .TSHPlayerDB import TSHPlayerDB
 from .StateManager import StateManager
+from .TSHGameAssetManager import TSHGameAssetManager
 
 
 class TSHCommentaryWidget(QDockWidget):
+    ChangeCommDataSignal = Signal(int, object)
+    LoadCommFromTagSignal = Signal(int, str, bool)
+
     def __init__(self, *args):
         super().__init__(*args)
         self.setWindowTitle(QApplication.translate("app", "Commentary"))
@@ -29,6 +33,9 @@ class TSHCommentaryWidget(QDockWidget):
         topOptions.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Maximum)
 
         self.widget.layout().addWidget(topOptions)
+        
+        self.ChangeCommDataSignal.connect(self.SetData)
+        self.LoadCommFromTagSignal.connect(self.LoadCommentatorFromTag)
 
         col = QWidget()
         col.setLayout(QVBoxLayout())
@@ -43,12 +50,12 @@ class TSHCommentaryWidget(QDockWidget):
         self.commentatorNumber.valueChanged.connect(
             lambda val: self.SetCommentatorNumber(val))
         
-        characterNumber = QSpinBox()
+        self.characterNumber = QSpinBox()
         charNumber = QLabel(QApplication.translate("app", "Characters per player"))
         charNumber.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         row.layout().addWidget(charNumber)
-        row.layout().addWidget(characterNumber)
-        characterNumber.valueChanged.connect(self.SetCharacterNumber)
+        row.layout().addWidget(self.characterNumber)
+        self.characterNumber.valueChanged.connect(self.SetCharacterNumber)
         
         self.eyeBt = QToolButton()
         self.eyeBt.setIcon(QIcon('assets/icons/eye.svg'))
@@ -96,11 +103,38 @@ class TSHCommentaryWidget(QDockWidget):
 
         self.widget.layout().addWidget(scrollArea)
 
-        self.commentaryWidgets = []
+        self.commentaryWidgets: list[TSHScoreboardPlayerWidget] = []
 
         StateManager.Set("commentary", {})
         self.commentatorNumber.setValue(2)
-        characterNumber.setValue(1)
+        self.characterNumber.setValue(1)
+        
+        TSHGameAssetManager.instance.signals.onLoad.connect(
+            self.SetDefaultsFromAssets
+        )
+
+    def SetData(self, index, data):
+        if index > len(self.commentaryWidgets):
+            self.SetCommentatorNumber(index+1)
+            self.commentatorNumber.setValue(index+1)
+
+        logger.info(index)
+
+        commentatorWidget = self.commentaryWidgets[index]
+        logger.info(commentatorWidget)
+        commentatorWidget.SetData(data, False, False)
+
+    def LoadCommentatorFromTag(self, index: int, tag: str, no_mains: bool):
+        if index > len(self.commentaryWidgets) - 1:
+            self.SetCommentatorNumber(index+1)
+            self.commentatorNumber.setValue(index+1)
+
+        playerData = TSHPlayerDB.GetPlayerFromTag(tag)
+        if playerData:
+            widget = self.commentaryWidgets[index]
+            widget.SetData(playerData, False, True, no_mains)
+            return True
+        return False
 
     def SetCommentatorNumber(self, number):
         while len(self.commentaryWidgets) < number:
@@ -149,3 +183,10 @@ class TSHCommentaryWidget(QDockWidget):
     def SetCharacterNumber(self, value):
         for pw in self.commentaryWidgets:
             pw.SetCharactersPerPlayer(value)
+    
+    def SetDefaultsFromAssets(self):
+        if StateManager.Get(f'game.defaults'):
+            characters = StateManager.Get(f'game.defaults.characters_per_player', 1)
+        else:
+            characters = 1
+        self.characterNumber.setValue(characters)
