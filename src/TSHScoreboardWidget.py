@@ -24,6 +24,10 @@ from .TSHPlayerDB import TSHPlayerDB
 from .thumbnail import main_generate_thumbnail as thumbnail
 from .TSHThumbnailSettingsWidget import *
 
+import json
+from pathlib import Path
+from pyRio.lookup import LookupDicts as rioLU 
+
 
 empty = {}
 
@@ -478,6 +482,9 @@ class TSHScoreboardWidget(QWidget):
             QPushButton, "btResetScore").clicked.connect(self.ResetScore)
         self.scoreColumn.findChild(
             QPushButton, "btResetScore").setIcon(QIcon('assets/icons/undo.svg'))
+        
+        self.scoreColumn.findChild(
+            QPushButton, "btLoadLiveGame").clicked.connect(self.rio_LoadLiveGame)
 
         # Add default and user tournament phase title files
         self.scoreColumn.findChild(QComboBox, "phase").addItem("")
@@ -762,6 +769,30 @@ class TSHScoreboardWidget(QWidget):
     def ResetScore(self):
         self.scoreColumn.findChild(QSpinBox, "score_left").setValue(0)
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
+
+    def rio_LoadLiveGame(self, data):
+        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
+        with open(testPath) as f:
+            exampleData = json.load(f)
+
+        liveData = exampleData["ongoing_games"][0]
+
+        data['team1score'] = liveData['home_score']
+        data['team2score'] = liveData['away_score']
+
+        for teamIndex in range(2):
+            roster_list = []
+            if teamIndex == 0:
+                team = "home"
+            else:
+                team = "away"
+
+            for characterIndex in range(9):
+                roster_list.append(rioLU.CHAR_NAME[liveData[f'{team}_roster_{characterIndex}_char']])
+
+            data['entrants'][teamIndex][0]['roster'] = roster_list
+
+        return data
 
     def AutoUpdate(self, data):
         TSHTournamentDataProvider.instance.GetMatch(
@@ -1071,6 +1102,13 @@ class TSHScoreboardWidget(QWidget):
                                     "mains": player.get("mains")
                                 }
                                 teamInstance[p].SetData(player, True, False)
+
+                            if player.get("roster"):
+                                for c, character in enumerate(player.get("roster")):
+                                    teamInstance[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                    self.team1playerWidgets[0].CharactersChanged() 
+                    self.team2playerWidgets[0].CharactersChanged() 
+
                 except Exception as e:
                     logger.error(f"Error while setting entrants: {e}")
                 finally:
@@ -1131,6 +1169,9 @@ class TSHScoreboardWidget(QWidget):
                 if (entrant[0].get("gamerTag") in TSHPlayerDB.database):
                     entrant[0] = entrant[0] | TSHPlayerDB.database[entrant[0].get(
                         "gamerTag")]
+                    
+        #Rio - attach extra data from the live game API.
+        data = self.rio_LoadLiveGame(data)
 
         self.ChangeSetData(data)
 
