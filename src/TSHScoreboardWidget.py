@@ -25,6 +25,7 @@ from .thumbnail import main_generate_thumbnail as thumbnail
 from .TSHThumbnailSettingsWidget import *
 
 import json
+import time
 from pathlib import Path
 from pyRio.lookup import LookupDicts as rioLU 
 
@@ -484,7 +485,12 @@ class TSHScoreboardWidget(QWidget):
             QPushButton, "btResetScore").setIcon(QIcon('assets/icons/undo.svg'))
         
         self.scoreColumn.findChild(
-            QPushButton, "btLoadLiveGame").clicked.connect(self.rio_LoadLiveGame)
+            QPushButton, "btRioLoadLiveGames").clicked.connect(self.rio_updateLiveGameList)
+        self.scoreColumn.findChild(
+            QPushButton, "btRioLoadLiveGames").setIcon(QIcon('assets/icons/rio.svg'))
+        
+        self.scoreColumn.findChild(
+            QComboBox, "rioLiveMatchList").currentTextChanged.connect(self.rio_setLiveGame)
 
         # Add default and user tournament phase title files
         self.scoreColumn.findChild(QComboBox, "phase").addItem("")
@@ -770,12 +776,46 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "score_left").setValue(0)
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
 
+    def rio_updateLiveGameList(self):
+        url_liveGames = 'https://api.projectrio.app//populate_db/ongoing_game/'
+    
+        liveGames_json = requests.get(url_liveGames).json()['ongoing_games']
+        
+        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
+        with open(testPath) as f:
+            exampleData = json.load(f)
+        exampleGame = exampleData["ongoing_games"][0]
+
+        self.rio_recent_live_games = {}
+        self.rio_recent_live_games["Select Game"] = {}
+        for game in liveGames_json:
+            if int(game['start_time']) > (time.time() - 60*60*0.5): # 30 Minutes
+                self.rio_recent_live_games[f"<- {game['home_player']} vs {game['away_player']} ->"] = game
+        self.rio_recent_live_games[f"Example {exampleGame['home_player']} vs {exampleGame['away_player']}"] = exampleGame
+
+        self.scoreColumn.findChild(
+            QComboBox, "rioLiveMatchList").addItems(list(self.rio_recent_live_games))
+        self.scoreColumn.findChild(
+            QComboBox, "rioLiveMatchList").setCurrentText(list(self.rio_recent_live_games)[0])
+        self.scoreColumn.findChild(
+            QComboBox, "rioLiveMatchList").lineEdit().editingFinished.emit()
+
+    def rio_setLiveGame(self, gameKey):
+        self.rio_selectedLiveGame = self.rio_recent_live_games[gameKey]
+        
+        data={'entrants': [[{}],[{}]]} #create dummy data with minimum field needed to populate roster info.
+        if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
+            self.charNumber.setValue(9)
+            data = self.rio_LoadLiveGame(data)
+
+        self.ChangeSetData(data)
+
     def rio_LoadLiveGame(self, data):
         testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
         with open(testPath) as f:
             exampleData = json.load(f)
 
-        liveData = exampleData["ongoing_games"][0]
+        liveData = self.rio_selectedLiveGame
 
         data['team1score'] = liveData['home_score']
         data['team2score'] = liveData['away_score']
@@ -1078,6 +1118,7 @@ class TSHScoreboardWidget(QWidget):
                     for t, team in enumerate(data.get("entrants")):
                         teamInstances = [self.team1playerWidgets,
                                          self.team2playerWidgets]
+                        teamInstance_noSwap = teamInstances[t]
                         if self.teamsSwapped:
                             teamInstances.reverse()
                         teamInstance = teamInstances[t]
@@ -1105,7 +1146,8 @@ class TSHScoreboardWidget(QWidget):
 
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
-                                    teamInstance[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                                    teamInstance_noSwap[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+
                     self.team1playerWidgets[0].CharactersChanged() 
                     self.team2playerWidgets[0].CharactersChanged() 
 
@@ -1171,7 +1213,9 @@ class TSHScoreboardWidget(QWidget):
                         "gamerTag")]
                     
         #Rio - attach extra data from the live game API.
-        data = self.rio_LoadLiveGame(data)
+        if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
+            self.charNumber.setValue(9)
+            data = self.rio_LoadLiveGame(data)
 
         self.ChangeSetData(data)
 

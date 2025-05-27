@@ -216,6 +216,45 @@
         </property>
        </widget>
       </item>
+      <item alignment="Qt::AlignHCenter">
+         <widget class="QLabel" name="label_5">
+          <property name="font">
+           <font>
+            <pointsize>8</pointsize>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>LIVE GAMES</string>
+          </property>
+         </widget>
+      </item>
+      <item>
+         <widget class="QComboBox" name="rioLiveMatchList">
+          <property name="minimumSize">
+           <size>
+            <width>10</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+         </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btRioLoadLiveGames">
+        <property name="text">
+         <string>REFRESH LIVE GAME LIST</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
