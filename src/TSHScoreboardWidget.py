@@ -491,6 +491,12 @@ class TSHScoreboardWidget(QWidget):
         
         self.scoreColumn.findChild(
             QComboBox, "rioLiveMatchList").currentTextChanged.connect(self.rio_setLiveGame)
+        
+        self.scoreColumn.findChild(
+            QCheckBox, "cbRioFlipRosters").setChecked(True)
+        self.scoreColumn.findChild(
+            QCheckBox, "cbRioFlipRosters").stateChanged.connect(self.rio_toggleRosterFlip)
+        self.rio_homeRosterLeftIndicator = True 
 
         # Add default and user tournament phase title files
         self.scoreColumn.findChild(QComboBox, "phase").addItem("")
@@ -790,8 +796,8 @@ class TSHScoreboardWidget(QWidget):
         self.rio_recent_live_games["Select Game"] = {}
         for game in liveGames_json:
             if int(game['start_time']) > (time.time() - 60*60*0.5): # 30 Minutes
-                self.rio_recent_live_games[f"<- {game['home_player']} vs {game['away_player']} ->"] = game
-        self.rio_recent_live_games[f"Example {exampleGame['home_player']} vs {exampleGame['away_player']}"] = exampleGame
+                self.rio_recent_live_games[f"H: {game['home_player']} vs A: {game['away_player']}"] = game
+        self.rio_recent_live_games[f"Example H: {exampleGame['home_player']} vs A: {exampleGame['away_player']}"] = exampleGame
 
         self.scoreColumn.findChild(
             QComboBox, "rioLiveMatchList").addItems(list(self.rio_recent_live_games))
@@ -807,6 +813,7 @@ class TSHScoreboardWidget(QWidget):
         if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
             self.charNumber.setValue(9)
             data = self.rio_LoadLiveGame(data)
+            self.rio_savedLivedData = data
 
         self.ChangeSetData(data)
 
@@ -833,7 +840,11 @@ class TSHScoreboardWidget(QWidget):
             data['entrants'][teamIndex][0]['roster'] = roster_list
 
         return data
-
+    
+    def rio_toggleRosterFlip(self):
+        self.rio_homeRosterLeftIndicator = self.scoreColumn.findChild(QCheckBox, "cbRioFlipRosters").isChecked()
+        self.ChangeSetData(self.rio_savedLivedData)
+        
     def AutoUpdate(self, data):
         TSHTournamentDataProvider.instance.GetMatch(
             self, data.get("id"), overwrite=False)
@@ -1118,7 +1129,13 @@ class TSHScoreboardWidget(QWidget):
                     for t, team in enumerate(data.get("entrants")):
                         teamInstances = [self.team1playerWidgets,
                                          self.team2playerWidgets]
-                        teamInstance_noSwap = teamInstances[t]
+                        
+                        #rosters are on their own swap toggle from the player data.
+                        if self.rio_homeRosterLeftIndicator:
+                            teamInstance_rosters = teamInstances[t]
+                        else:
+                            teamInstance_rosters = teamInstances[1-t]
+
                         if self.teamsSwapped:
                             teamInstances.reverse()
                         teamInstance = teamInstances[t]
@@ -1146,7 +1163,7 @@ class TSHScoreboardWidget(QWidget):
 
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
-                                    teamInstance_noSwap[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                                    teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
 
                     self.team1playerWidgets[0].CharactersChanged() 
                     self.team2playerWidgets[0].CharactersChanged() 

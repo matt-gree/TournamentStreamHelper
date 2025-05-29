@@ -255,6 +255,16 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QCheckBox" name="cbRioFlipRosters">
+        <property name="text">
+         <string>HOME ON LEFT</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
