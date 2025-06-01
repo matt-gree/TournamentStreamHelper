@@ -838,6 +838,7 @@ class TSHScoreboardWidget(QWidget):
                 roster_list.append(rioLU.CHAR_NAME[liveData[f'{team}_roster_{characterIndex}_char']])
 
             data['entrants'][teamIndex][0]['roster'] = roster_list
+            data['entrants'][teamIndex][0]['captainIndex'] = liveData[f'{team}_captain']
 
         return data
     
@@ -1160,6 +1161,8 @@ class TSHScoreboardWidget(QWidget):
                                     "mains": player.get("mains")
                                 }
                                 teamInstance[p].SetData(player, True, False)
+                            
+                            teamInstance_rosters[p].findChild(QComboBox, "rio_captainIndex").setCurrentText(str(player['captainIndex'] + 1))
 
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):

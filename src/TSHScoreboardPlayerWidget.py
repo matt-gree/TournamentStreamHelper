@@ -180,6 +180,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.pronoun_completer.setModel(self.pronoun_model)
         self.pronoun_model.setStringList(self.pronoun_list)
 
+        self.rio_initCaptainIndex()
+
     def ComboBoxIndexChanged(self, element: QComboBox):
         StateManager.Set(
             f"{self.path}.{element.objectName()}", element.currentData())
@@ -917,3 +919,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                     c.setCurrentIndex(0)
         StateManager.Unset(f"{self.path}.seed")
         StateManager.ReleaseSaving()
+
+    def rio_initCaptainIndex(self):
+        captainIndexBox = self.findChild(QComboBox, "rio_captainIndex")
+        captainIndexBox.addItems([str(i) for i in range(1, 10)])
+        captainIndexBox.setCurrentText("1")
