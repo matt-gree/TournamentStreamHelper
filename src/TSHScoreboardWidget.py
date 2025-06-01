@@ -421,7 +421,7 @@ class TSHScoreboardWidget(QWidget):
         StateManager.Unset(f'score.{self.scoreboardNumber}.team.2.player')
         StateManager.Unset(f'score.{self.scoreboardNumber}.stage_strike')
         self.playerNumber.setValue(1)
-        self.charNumber.setValue(1)
+        self.charNumber.setValue(9)
 
         for c in self.scoreColumn.findChildren(QComboBox):
             c.lineEdit().editingFinished.connect(

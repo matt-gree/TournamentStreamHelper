@@ -151,7 +151,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             )
             c.currentIndexChanged.emit(0)
 
-        self.SetCharactersPerPlayer(1)
+        self.SetCharactersPerPlayer(9)
 
         TSHPlayerDB.signals.db_updated.connect(
             self.SetupAutocomplete)
