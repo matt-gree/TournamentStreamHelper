@@ -799,12 +799,11 @@ class TSHScoreboardWidget(QWidget):
                 self.rio_recent_live_games[f"H: {game['home_player']} vs A: {game['away_player']}"] = game
         self.rio_recent_live_games[f"Example H: {exampleGame['home_player']} vs A: {exampleGame['away_player']}"] = exampleGame
 
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").addItems(list(self.rio_recent_live_games))
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").setCurrentText(list(self.rio_recent_live_games)[0])
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").lineEdit().editingFinished.emit()
+        matchList = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
+        matchList.clear()
+        matchList.addItems(list(self.rio_recent_live_games))
+        matchList.setCurrentText(list(self.rio_recent_live_games)[0])
+        matchList.lineEdit().editingFinished.emit()
 
     def rio_setLiveGame(self, gameKey):
         self.rio_selectedLiveGame = self.rio_recent_live_games[gameKey]
