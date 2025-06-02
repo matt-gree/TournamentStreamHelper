@@ -745,6 +745,16 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                 if stateElement.currentIndex() != stateIndex:
                     stateElement.setCurrentIndex(stateIndex)
 
+            #Nuche: RIO I think the first piece of code sets the dropdown, and the second updates the underlying data. 
+            if data.get("captainIndex"):
+                    rio_captainIndexElement: QComboBox = self.findChild(
+                        QComboBox, "rio_captainIndex")
+                    if rio_captainIndexElement.currentIndex() != data.get("captainIndex"):
+                        rio_captainIndexElement.setCurrentIndex(data.get("captainIndex"))
+
+            StateManager.Set(
+                f"{self.path}.rio_captainIndex", data.get("captainIndex"))
+
             if data.get("mains") and no_mains != True:
                 if type(data.get("mains")) == list:
                     for element in self.character_elements:

@@ -1162,11 +1162,15 @@ class TSHScoreboardWidget(QWidget):
                                 }
                                 teamInstance[p].SetData(player, True, False)
                             
-                            teamInstance_rosters[p].findChild(QComboBox, "rio_captainIndex").setCurrentText(str(player['captainIndex'] + 1))
+                            #RIO - had to call this so the captain index gets set. 
+                            teamInstance_rosters[p].findChild(QComboBox, "rio_captainIndex").setCurrentIndex(player.get("captainIndex"))
+                            teamInstance_rosters[p].SetData(player, True, False)
+                            
 
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
                                     teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                        
 
                     self.team1playerWidgets[0].CharactersChanged() 
                     self.team2playerWidgets[0].CharactersChanged() 
