@@ -23,6 +23,7 @@ from .TSHPlayerDB import TSHPlayerDB
 
 from .thumbnail import main_generate_thumbnail as thumbnail
 from .TSHThumbnailSettingsWidget import *
+from src.RioGameDataProvider import RioGameDataProvider
 
 import json
 import time
@@ -462,6 +463,23 @@ class TSHScoreboardWidget(QWidget):
         )
         self.scoreColumn.findChild(
             QSpinBox, "score_right").valueChanged.emit(0)
+        
+        self.halfInningComboBox = self.scoreColumn.findChild(QComboBox, "half_inning")
+        self.halfInningComboBox.addItems(["Top", "Bottom"])
+        
+        self.halfInningComboBox.currentIndexChanged.connect(
+            lambda index: StateManager.Set(
+                f"score.{self.scoreboardNumber}.half_inning", self.halfInningComboBox.currentText()
+            )
+        )   
+        
+        self.inningSpinBox = self.scoreColumn.findChild(QSpinBox, "inning")
+
+        self.inningSpinBox.valueChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.inning", value
+                )
+        )
 
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
             lambda: self.ExportTeamLogo(
@@ -488,6 +506,11 @@ class TSHScoreboardWidget(QWidget):
             QPushButton, "btRioLoadLiveGames").clicked.connect(self.rio_updateLiveGameList)
         self.scoreColumn.findChild(
             QPushButton, "btRioLoadLiveGames").setIcon(QIcon('assets/icons/rio.svg'))
+        
+        self.rio_provider = RioGameDataProvider()
+        self.rio_provider.live_games_updated.connect(self.populate_rio_dropdown)
+        self.rio_provider.live_game_selected.connect(self.load_rio_game)
+        self.rio_live_game_lookup = {}
         
         self.scoreColumn.findChild(
             QComboBox, "rioLiveMatchList").currentTextChanged.connect(self.rio_setLiveGame)
@@ -783,21 +806,7 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
 
     def rio_updateLiveGameList(self):
-        url_liveGames = 'https://api.projectrio.app//populate_db/ongoing_game/'
-    
-        liveGames_json = requests.get(url_liveGames).json()['ongoing_games']
-        
-        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
-        with open(testPath) as f:
-            exampleData = json.load(f)
-        exampleGame = exampleData["ongoing_games"][0]
-
-        self.rio_recent_live_games = {}
-        self.rio_recent_live_games["Select Game"] = {}
-        for game in liveGames_json:
-            if int(game['start_time']) > (time.time() - 60*60*0.5): # 30 Minutes
-                self.rio_recent_live_games[f"H: {game['home_player']} vs A: {game['away_player']}"] = game
-        self.rio_recent_live_games[f"Example H: {exampleGame['home_player']} vs A: {exampleGame['away_player']}"] = exampleGame
+        self.rio_provider.FetchGames()
 
         matchList = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
         matchList.clear()
@@ -805,41 +814,29 @@ class TSHScoreboardWidget(QWidget):
         matchList.setCurrentText(list(self.rio_recent_live_games)[0])
         matchList.lineEdit().editingFinished.emit()
 
-    def rio_setLiveGame(self, gameKey):
-        self.rio_selectedLiveGame = self.rio_recent_live_games[gameKey]
-        
-        data={'entrants': [[{}],[{}]]} #create dummy data with minimum field needed to populate roster info.
-        if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
-            self.charNumber.setValue(9)
-            data = self.rio_LoadLiveGame(data)
-            self.rio_savedLivedData = data
+        for game in games:
+            label = f"H: {game.get('home_player', 'Unknown')} vs A: {game.get('away_player', 'Unknown')}"
+            if game.get("source") == "hud":
+                label = f"[HUD] {label}"
+            elif game.get("source") == "server":
+                label = f"[Online] {label}"
 
-        self.ChangeSetData(data)
+            combo.addItem(label)
+            self.rio_live_game_lookup[label] = game
 
-    def rio_LoadLiveGame(self, data):
-        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
-        with open(testPath) as f:
-            exampleData = json.load(f)
+        if combo.count() > 0:
+            combo.setCurrentIndex(0)
+            self.rio_setLiveGame(combo.currentText())
 
-        liveData = self.rio_selectedLiveGame
+    def rio_setLiveGame(self, label):
+        game = self.rio_live_game_lookup.get(label)
+        if game:
+            self.rio_provider.SelectLiveGame(game)
 
-        data['team1score'] = liveData['home_score']
-        data['team2score'] = liveData['away_score']
-
-        for teamIndex in range(2):
-            roster_list = []
-            if teamIndex == 0:
-                team = "home"
-            else:
-                team = "away"
-
-            for characterIndex in range(9):
-                roster_list.append(rioLU.CHAR_NAME[liveData[f'{team}_roster_{characterIndex}_char']])
-
-            data['entrants'][teamIndex][0]['roster'] = roster_list
-            data['entrants'][teamIndex][0]['captainIndex'] = liveData[f'{team}_captain']
-
-        return data
+    def load_rio_game(self, parsed_data):
+        self.charNumber.setValue(9)
+        self.rio_savedLivedData = parsed_data
+        self.ChangeSetData(parsed_data)
     
     def rio_toggleRosterFlip(self):
         self.rio_homeRosterLeftIndicator = self.scoreColumn.findChild(QCheckBox, "cbRioFlipRosters").isChecked()
@@ -1097,6 +1094,17 @@ class TSHScoreboardWidget(QWidget):
                 scoreContainers[0].setValue(data.get("team1score"))
             if data.get("team2score"):
                 scoreContainers[1].setValue(data.get("team2score"))
+
+            inningContainers = [
+                self.scoreColumn.findChild(QComboBox, "half_inning"),
+                self.scoreColumn.findChild(QSpinBox, "inning")
+            ]
+
+            if data.get("half_inning"):
+                inningContainers[0].setCurrentText(data.get("half_inning"))
+            if data.get("inning"):
+                inningContainers[1].setValue(data.get("inning"))
+            
             if data.get("bestOf"):
                 self.scoreColumn.findChild(
                     QSpinBox, "best_of").setValue(data.get("bestOf"))
@@ -1133,8 +1141,20 @@ class TSHScoreboardWidget(QWidget):
                         #rosters are on their own swap toggle from the player data.
                         if self.rio_homeRosterLeftIndicator:
                             teamInstance_rosters = teamInstances[t]
+                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
+                            rio_name = team[0].get("rioName")
+                            if rio_name_target and rio_name:
+                                logger.debug(f"[RIO] Setting rioName on team {t} (normal): {rio_name}")
+                                rio_name_target.setText(rio_name)
+                                rio_name_target.editingFinished.emit()
                         else:
                             teamInstance_rosters = teamInstances[1-t]
+                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
+                            rio_name = team[0].get("rioName")
+                            if rio_name_target and rio_name:
+                                logger.debug(f"[RIO] Setting rioName on team {t} (flipped): {rio_name}")
+                                rio_name_target.setText(rio_name)
+                                rio_name_target.editingFinished.emit()
 
                         if self.teamsSwapped:
                             teamInstances.reverse()
@@ -1161,9 +1181,10 @@ class TSHScoreboardWidget(QWidget):
                                 }
                                 teamInstance[p].SetData(player, True, False)
                             
-                            #RIO - had to call this so the captain index gets set. 
-                            teamInstance_rosters[p].findChild(QComboBox, "rio_captainIndex").setCurrentIndex(player.get("captainIndex"))
-                            teamInstance_rosters[p].SetData(player, True, False)
+                            captain_index = player.get("captainIndex", 0)
+                            if hasattr(teamInstance_rosters[p], "character_elements"):
+                                for idx, (_, _, _, _, radio_button) in enumerate(teamInstance_rosters[p].character_elements):
+                                    radio_button.setChecked(idx == captain_index)
                             
 
                             if player.get("roster"):
