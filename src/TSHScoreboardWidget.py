@@ -808,11 +808,10 @@ class TSHScoreboardWidget(QWidget):
     def rio_updateLiveGameList(self):
         self.rio_provider.FetchGames()
 
-        matchList = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
-        matchList.clear()
-        matchList.addItems(list(self.rio_recent_live_games))
-        matchList.setCurrentText(list(self.rio_recent_live_games)[0])
-        matchList.lineEdit().editingFinished.emit()
+    def populate_rio_dropdown(self, games):
+        combo = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
+        combo.clear()
+        self.rio_live_game_lookup = {}
 
         for game in games:
             label = f"H: {game.get('home_player', 'Unknown')} vs A: {game.get('away_player', 'Unknown')}"
@@ -827,6 +826,8 @@ class TSHScoreboardWidget(QWidget):
         if combo.count() > 0:
             combo.setCurrentIndex(0)
             self.rio_setLiveGame(combo.currentText())
+
+        combo.lineEdit().editingFinished.emit()
 
     def rio_setLiveGame(self, label):
         game = self.rio_live_game_lookup.get(label)
