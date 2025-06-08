@@ -152,6 +152,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             c.currentIndexChanged.emit(0)
 
         self.SetCharactersPerPlayer(9)
+        self.selected_captain_index = 0
 
         TSHPlayerDB.signals.db_updated.connect(
             self.SetupAutocomplete)
@@ -180,7 +181,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.pronoun_completer.setModel(self.pronoun_model)
         self.pronoun_model.setStringList(self.pronoun_list)
 
-        self.rio_initCaptainIndex()
+        # self.rio_initCaptainIndex()
 
     def ComboBoxIndexChanged(self, element: QComboBox):
         StateManager.Set(
@@ -191,7 +192,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         with self.dataLock:
             characters = {}
 
-            for i, (element, character, color, variant) in enumerate(self.character_elements):
+            for i, (element, character, color, variant, captain) in enumerate(self.character_elements):
                 data = character.currentData()
 
                 if data == None:
@@ -384,11 +385,25 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.teamNumber = team
 
     def SetCharactersPerPlayer(self, number):
+        # Create radio button group for captain selection if it doesn't exist
+        if not hasattr(self, 'captain_radio_group'):
+            self.captain_radio_group = QButtonGroup(self)
+            self.captain_radio_group.setExclusive(True)
+
+        # Clear excess character entries
+        while len(self.character_elements) > number:
+            element = self.character_elements.pop()
+            self.captain_radio_group.removeButton(element[4])  # Remove radio button from group
+            element[0].setParent(None)
+
+        # Add new character entries
         while len(self.character_elements) < number:
             character_element = QWidget()
             character_element.setLayout(QHBoxLayout())
             character_element.layout().setSpacing(4)
             character_element.layout().setContentsMargins(0, 0, 0, 0)
+
+            # Character selection
             player_character = QComboBox()
             player_character.setEditable(True)
             character_element.layout().addWidget(player_character)
@@ -400,47 +415,49 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             player_character.setModel(
                 TSHGameAssetManager.instance.characterModel)
             player_character.setIconSize(QSize(24, 24))
-            player_character.setFixedHeight(32)
-            player_character.setFont(
-                QFont(player_character.font().family(), 9))
+            player_character.setFont(QFont(player_character.font().family(), 9))
             player_character.lineEdit().setFont(QFont(player_character.font().family(), 9))
 
+            # Color selection
             player_character_color = QComboBox()
             character_element.layout().addWidget(player_character_color)
             player_character_color.setIconSize(QSize(48, 48))
             player_character_color.setFixedHeight(32)
             player_character_color.setMinimumWidth(64)
             player_character_color.setMaximumWidth(120)
-            player_character_color.setFont(
-                QFont(player_character_color.font().family(), 9))
+            player_character_color.setFont(QFont(player_character_color.font().family(), 9))
             view = QListView()
             view.setIconSize(QSize(128, 128))
             player_character_color.setView(view)
-            # self.player_character_color.activated.connect(self.CharacterChanged)
-            # self.CharacterChanged()
 
-            # Add variant
+            # Variant selection
             player_variant = QComboBox()
             character_element.layout().addWidget(player_variant)
             player_variant.setIconSize(QSize(24, 24))
             player_variant.setFixedHeight(32)
             player_variant.setMinimumWidth(60)
             player_variant.setMaximumWidth(120)
-            player_variant.setFont(
-                QFont(player_variant.font().family(), 9))
-            player_variant.setModel(
-                TSHGameAssetManager.instance.variantModel)
+            player_variant.setFont(QFont(player_variant.font().family(), 9))
+            player_variant.setModel(TSHGameAssetManager.instance.variantModel)
             view = QListView()
             view.setIconSize(QSize(24, 24))
             player_variant.setView(view)
 
-            # Move up/down
+            # Captain selection radio button
+            captain_radio = QRadioButton()
+            captain_radio.setToolTip("Select as Captain")
+            self.captain_radio_group.addButton(captain_radio)
+            character_element.layout().addWidget(captain_radio)
+            captain_radio.toggled.connect(self.UpdateCaptainIndex)
+
+            # Move up/down buttons
             btMoveUp = QPushButton()
             btMoveUp.setFixedSize(24, 24)
             btMoveUp.setIcon(QIcon("./assets/icons/arrow_up.svg"))
             character_element.layout().addWidget(btMoveUp)
             btMoveUp.clicked.connect(lambda x=None, index=len(
                 self.character_elements): self.SwapCharacters(index, index-1))
+
             btMoveDown = QPushButton()
             btMoveDown.setFixedSize(24, 24)
             btMoveDown.setIcon(QIcon("./assets/icons/arrow_down.svg"))
@@ -448,12 +465,12 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             btMoveDown.clicked.connect(lambda x=None, index=len(
                 self.character_elements): self.SwapCharacters(index, index+1))
 
-            # Add line to characters
             self.character_container.layout().addWidget(character_element)
 
             self.character_elements.append(
-                [character_element, player_character, player_character_color, player_variant])
+                [character_element, player_character, player_character_color, player_variant, captain_radio])
 
+            # Event connections
             player_character.currentIndexChanged.connect(
                 lambda x, element=player_character, target=player_character_color: [
                     self.LoadSkinOptions(element, target),
@@ -466,7 +483,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                     self.CharactersChanged()
                 ]
             )
-            
+
             player_variant.currentIndexChanged.connect(
                 lambda index, element=player_character: [
                     self.CharactersChanged()
@@ -477,18 +494,11 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             player_character_color.setCurrentIndex(0)
             player_variant.setCurrentIndex(0)
 
-            player_character.setObjectName(
-                f"character_{len(self.character_elements)}")
-            player_character_color.setObjectName(
-                f"character_color_{len(self.character_elements)}")
-            player_variant.setObjectName(
-                f"variant_{len(self.character_elements)}")
+            player_character.setObjectName(f"character_{len(self.character_elements)}")
+            player_character_color.setObjectName(f"character_color_{len(self.character_elements)}")
+            player_variant.setObjectName(f"variant_{len(self.character_elements)}")
 
-        while len(self.character_elements) > number:
-            self.character_elements[-1][0].setParent(None)
-            self.character_elements.pop()
-
-        self.CharactersChanged(includeMains=True)
+            self.CharactersChanged(includeMains=True)
 
     def SwapCharacters(self, index1: int, index2: int):
         StateManager.BlockSaving()
@@ -501,6 +511,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
 
         # Save index1 settings
         tmp = [char1[1].currentText(), char1[2].currentIndex()]
+        tmp_radio_checked = char1[4].isChecked()
 
         # Set index1 to index2
         # Character
@@ -509,6 +520,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             char1[1].setCurrentIndex(found)
         else:
             char1[1].setCurrentText(char2[1].currentText())
+
+        char1[4].setChecked(char2[4].isChecked())
 
         # Color
         char1[2].setCurrentIndex(char2[2].currentIndex())
@@ -523,6 +536,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
 
         # Color
         char2[2].setCurrentIndex(tmp[1])
+
+        char2[4].setChecked(tmp_radio_checked)
 
         self.CharactersChanged()
 
@@ -745,15 +760,13 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                 if stateElement.currentIndex() != stateIndex:
                     stateElement.setCurrentIndex(stateIndex)
 
-            #Nuche: RIO I think the first piece of code sets the dropdown, and the second updates the underlying data. 
-            if data.get("captainIndex"):
-                    rio_captainIndexElement: QComboBox = self.findChild(
-                        QComboBox, "rio_captainIndex")
-                    if rio_captainIndexElement.currentIndex() != data.get("captainIndex"):
-                        rio_captainIndexElement.setCurrentIndex(data.get("captainIndex"))
+            if data.get("captainIndex") is not None:
+                index = int(data["captainIndex"])
+                if 0 <= index < len(self.character_elements):
+                    radio_button = self.character_elements[index][4]
+                    radio_button.setChecked(True)
 
-            StateManager.Set(
-                f"{self.path}.rio_captainIndex", data.get("captainIndex"))
+                StateManager.Set(f"{self.path}.rio_captainIndex", index)
 
             if data.get("mains") and no_mains != True:
                 if type(data.get("mains")) == list:
@@ -838,7 +851,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         if TSHGameAssetManager.instance.selectedGame.get("codename"):
             mains = []
 
-            for i, (element, character, color, variant) in enumerate(self.character_elements):
+            for i, (element, character, color, variant, captain) in enumerate(self.character_elements):
                 data = {}
 
                 if character.currentData() is not None:
@@ -930,7 +943,9 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         StateManager.Unset(f"{self.path}.seed")
         StateManager.ReleaseSaving()
 
-    def rio_initCaptainIndex(self):
-        captainIndexBox = self.findChild(QComboBox, "rio_captainIndex")
-        captainIndexBox.addItems([str(i) for i in range(1, 10)])
-        captainIndexBox.setCurrentText("1")
+    def UpdateCaptainIndex(self):
+        for i, (_, _, _, _, radio_button) in enumerate(self.character_elements):
+            if radio_button.isChecked():
+                StateManager.Set(f"{self.path}.rio_captainIndex", i)
+                self.CharactersChanged()
+                break

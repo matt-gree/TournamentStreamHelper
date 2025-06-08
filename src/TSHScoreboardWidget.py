@@ -806,7 +806,7 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
 
     def rio_updateLiveGameList(self):
-        self.rio_provider.FetchGamesFromServer()
+        self.rio_provider.FetchGames()
 
     def populate_rio_dropdown(self, games):
         combo = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
@@ -814,13 +814,18 @@ class TSHScoreboardWidget(QWidget):
         self.rio_live_game_lookup = {}
 
         for game in games:
-            label = f"H: {game['home_player']} vs A: {game['away_player']}"
-            self.rio_live_game_lookup[label] = game
+            label = f"H: {game.get('home_player', 'Unknown')} vs A: {game.get('away_player', 'Unknown')}"
+            if game.get("source") == "hud":
+                label = f"[HUD] {label}"
+            elif game.get("source") == "server":
+                label = f"[Online] {label}"
+
             combo.addItem(label)
+            self.rio_live_game_lookup[label] = game
 
         if combo.count() > 0:
             combo.setCurrentIndex(0)
-            self.select_rio_game(combo.currentText())
+            self.rio_setLiveGame(combo.currentText())
 
     def rio_setLiveGame(self, label):
         game = self.rio_live_game_lookup.get(label)
@@ -1152,9 +1157,10 @@ class TSHScoreboardWidget(QWidget):
                                 }
                                 teamInstance[p].SetData(player, True, False)
                             
-                            #RIO - had to call this so the captain index gets set. 
-                            teamInstance_rosters[p].findChild(QComboBox, "rio_captainIndex").setCurrentIndex(player.get("captainIndex"))
-                            teamInstance_rosters[p].SetData(player, True, False)
+                            captain_index = player.get("captainIndex", 0)
+                            if hasattr(teamInstance_rosters[p], "character_elements"):
+                                for idx, (_, _, _, _, radio_button) in enumerate(teamInstance_rosters[p].character_elements):
+                                    radio_button.setChecked(idx == captain_index)
                             
 
                             if player.get("roster"):

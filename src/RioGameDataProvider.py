@@ -11,7 +11,7 @@ from .Workers import Worker
 
 class RioGameDataProvider(QObject):
     """
-    Provides live game data from Project Rio, including server-based games and HUD (local) games.
+    Provides live game data from Project Rio, including server-based and HUD (local) games.
     Emits signals when new data is available.
     """
 
@@ -21,58 +21,62 @@ class RioGameDataProvider(QObject):
     def __init__(self, hud_folder=None):
         super().__init__()
         self.API_URL = "https://api.projectrio.app/populate_db/ongoing_game/"
-        self.hud_folder = hud_folder or (Path(__file__).parent / "test")
+        self.hud_folder = hud_folder or (Path(__file__).parent.parent / "test")
         self.live_games = []
         self.current_game = None
         self.threadPool = QThreadPool()
 
-    def FetchGamesFromServer(self):
+    def FetchGames(self):
         """
-        Starts a background thread to fetch live games from the Project Rio server.
-        Emits `live_games_updated` with the results when done.
+        Fetches both server and HUD games. Emits a single combined list.
         """
-        worker = Worker(self._fetch_games_from_server)
-
+        worker = Worker(self._fetch_all_games)
         worker.signals.result.connect(self._on_live_games_fetched)
         worker.signals.error.connect(lambda e: print(f"[RioGameDataProvider] Error fetching games: {e}"))
-        worker.signals.finished.connect(lambda: print("[RioGameDataProvider] Finished fetching games"))
-
+        worker.signals.finished.connect(lambda: print("[RioGameDataProvider] Finished fetching all games"))
         self.threadPool.start(worker)
 
-    def _fetch_games_from_server(self, progress_callback=None, cancel_event=None):
-        response = requests.get(self.API_URL)
-        response.raise_for_status()
-        games = response.json().get("ongoing_games", [])
-        return [
-            g for g in games if int(g.get("start_time", 0)) > (time.time() - 60 * 40)
-        ]
-    
-    def _on_live_games_fetched(self, recent_games):
-        print(f"[DEBUG] Fetched {len(recent_games)} Rio games")
-        self.live_games = recent_games
-        self.live_games_updated.emit(self.live_games)
+    def _fetch_all_games(self, progress_callback=None, cancel_event=None):
+        games = []
 
-    def FetchGamesFromHUD(self):
-        """
-        Loads HUD data from a local file (default: test/liveGameExample.json).
-        Emits `live_games_updated`.
-        """
-        hud_file = self.hud_folder / "liveGameExample.json"
+        # Fetch server games
         try:
+            response = requests.get(self.API_URL)
+            response.raise_for_status()
+            server_games = response.json().get("ongoing_games", [])
+            recent_server_games = [
+                {**g, "source": "server"} for g in server_games
+                if int(g.get("start_time", 0)) > (time.time() - 60 * 40)
+            ]
+            games.extend(recent_server_games)
+        except Exception as e:
+            print(f"[RioGameDataProvider] Failed to fetch server games: {e}")
+
+        # Fetch HUD games
+        try:
+            hud_file = self.hud_folder / "liveGameExample.json"
             with open(hud_file, "r") as f:
                 data = json.load(f)
-                games = data.get("ongoing_games", [])
-                self.live_games = games
-                self.live_games_updated.emit(games)
+                hud_games = data.get("ongoing_games", [])
+                for g in hud_games:
+                    g["source"] = "hud"
+                games.extend(hud_games)
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to load HUD data: {e}")
-            self.live_games_updated.emit([])
+
+        return games
+
+    def _on_live_games_fetched(self, all_games):
+        print(f"[DEBUG] Total fetched games: {len(all_games)}")
+        self.live_games = all_games
+        self.live_games_updated.emit(all_games)
 
     def SelectLiveGame(self, game_dict):
         """
         Parses a selected game and emits `live_game_selected`.
         """
         parsed = self.parse_game_data(game_dict)
+        parsed["source"] = game_dict.get("source", "unknown")
         self.current_game = parsed
         self.live_game_selected.emit(parsed)
 
