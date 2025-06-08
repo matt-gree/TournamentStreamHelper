@@ -690,6 +690,13 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                 team.setText(f'{data.get("prefix")}')
                 team.editingFinished.emit()
 
+            rioName = self.findChild(QLineEdit, 'rioName')
+            if data.get("rioName") and data.get("rioName") != rioName.text():
+                data["rioName"] = TSHBadWordFilter.Censor(
+                    data["rioName"], data.get("country_code"))
+                name.setText(f'{data.get("rioName")}')
+                rioName.editingFinished.emit()
+
             real_name = self.findChild(QWidget, "real_name")
             if data.get("name") and data.get("name") != real_name.text():
                 data["name"] = TSHBadWordFilter.Censor(

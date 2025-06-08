@@ -98,6 +98,9 @@ class RioGameDataProvider(QObject):
                 ]
                 data["entrants"][i][0]["roster"] = roster
                 data["entrants"][i][0]["captainIndex"] = game_json[f"{team}_captain"]
+                data["entrants"][i][0]['rioName'] = game_json[f'{team}_player']
+                
+                print(f"[DEBUG] Parsed game data for team {team}: {data['entrants'][i][0]}")
 
             data['half_inning'] = 'Top' if game_json["half_inning"] == 0 else 'Bottom'
             data['inning'] = game_json["inning"]

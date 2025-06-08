@@ -1140,8 +1140,20 @@ class TSHScoreboardWidget(QWidget):
                         #rosters are on their own swap toggle from the player data.
                         if self.rio_homeRosterLeftIndicator:
                             teamInstance_rosters = teamInstances[t]
+                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
+                            rio_name = team[0].get("rioName")
+                            if rio_name_target and rio_name:
+                                logger.debug(f"[RIO] Setting rioName on team {t} (normal): {rio_name}")
+                                rio_name_target.setText(rio_name)
+                                rio_name_target.editingFinished.emit()
                         else:
                             teamInstance_rosters = teamInstances[1-t]
+                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
+                            rio_name = team[0].get("rioName")
+                            if rio_name_target and rio_name:
+                                logger.debug(f"[RIO] Setting rioName on team {t} (flipped): {rio_name}")
+                                rio_name_target.setText(rio_name)
+                                rio_name_target.editingFinished.emit()
 
                         if self.teamsSwapped:
                             teamInstances.reverse()
