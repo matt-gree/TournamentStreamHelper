@@ -23,6 +23,7 @@ from .TSHPlayerDB import TSHPlayerDB
 
 from .thumbnail import main_generate_thumbnail as thumbnail
 from .TSHThumbnailSettingsWidget import *
+from src.RioGameDataProvider import RioGameDataProvider
 
 import json
 import time
@@ -489,6 +490,11 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(
             QPushButton, "btRioLoadLiveGames").setIcon(QIcon('assets/icons/rio.svg'))
         
+        self.rio_provider = RioGameDataProvider()
+        self.rio_provider.live_games_updated.connect(self.populate_rio_dropdown)
+        self.rio_provider.live_game_selected.connect(self.load_rio_game)
+        self.rio_live_game_lookup = {}
+        
         self.scoreColumn.findChild(
             QComboBox, "rioLiveMatchList").currentTextChanged.connect(self.rio_setLiveGame)
         
@@ -783,64 +789,31 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
 
     def rio_updateLiveGameList(self):
-        url_liveGames = 'https://api.projectrio.app//populate_db/ongoing_game/'
-    
-        liveGames_json = requests.get(url_liveGames).json()['ongoing_games']
-        
-        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
-        with open(testPath) as f:
-            exampleData = json.load(f)
-        exampleGame = exampleData["ongoing_games"][0]
+        self.rio_provider.FetchGamesFromServer()
 
-        self.rio_recent_live_games = {}
-        self.rio_recent_live_games["Select Game"] = {}
-        for game in liveGames_json:
-            if int(game['start_time']) > (time.time() - 60*60*0.5): # 30 Minutes
-                self.rio_recent_live_games[f"H: {game['home_player']} vs A: {game['away_player']}"] = game
-        self.rio_recent_live_games[f"Example H: {exampleGame['home_player']} vs A: {exampleGame['away_player']}"] = exampleGame
+    def populate_rio_dropdown(self, games):
+        combo = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
+        combo.clear()
+        self.rio_live_game_lookup = {}
 
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").addItems(list(self.rio_recent_live_games))
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").setCurrentText(list(self.rio_recent_live_games)[0])
-        self.scoreColumn.findChild(
-            QComboBox, "rioLiveMatchList").lineEdit().editingFinished.emit()
+        for game in games:
+            label = f"H: {game['home_player']} vs A: {game['away_player']}"
+            self.rio_live_game_lookup[label] = game
+            combo.addItem(label)
 
-    def rio_setLiveGame(self, gameKey):
-        self.rio_selectedLiveGame = self.rio_recent_live_games[gameKey]
-        
-        data={'entrants': [[{}],[{}]]} #create dummy data with minimum field needed to populate roster info.
-        if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
-            self.charNumber.setValue(9)
-            data = self.rio_LoadLiveGame(data)
-            self.rio_savedLivedData = data
+        if combo.count() > 0:
+            combo.setCurrentIndex(0)
+            self.select_rio_game(combo.currentText())
 
-        self.ChangeSetData(data)
+    def rio_setLiveGame(self, label):
+        game = self.rio_live_game_lookup.get(label)
+        if game:
+            self.rio_provider.SelectLiveGame(game)
 
-    def rio_LoadLiveGame(self, data):
-        testPath = Path(__file__).parent.parent / 'test' / 'liveGameExample.json'
-        with open(testPath) as f:
-            exampleData = json.load(f)
-
-        liveData = self.rio_selectedLiveGame
-
-        data['team1score'] = liveData['home_score']
-        data['team2score'] = liveData['away_score']
-
-        for teamIndex in range(2):
-            roster_list = []
-            if teamIndex == 0:
-                team = "home"
-            else:
-                team = "away"
-
-            for characterIndex in range(9):
-                roster_list.append(rioLU.CHAR_NAME[liveData[f'{team}_roster_{characterIndex}_char']])
-
-            data['entrants'][teamIndex][0]['roster'] = roster_list
-            data['entrants'][teamIndex][0]['captainIndex'] = liveData[f'{team}_captain']
-
-        return data
+    def load_rio_game(self, parsed_data):
+        self.charNumber.setValue(9)
+        self.rio_savedLivedData = parsed_data
+        self.ChangeSetData(parsed_data)
     
     def rio_toggleRosterFlip(self):
         self.rio_homeRosterLeftIndicator = self.scoreColumn.findChild(QCheckBox, "cbRioFlipRosters").isChecked()
