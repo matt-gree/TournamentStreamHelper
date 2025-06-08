@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>264</width>
-    <height>410</height>
+    <width>623</width>
+    <height>579</height>
    </rect>
   </property>
   <property name="font">
@@ -41,12 +41,12 @@
       <string>SCORE</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignHCenter|Qt::AlignTop</set>
+      <set>Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignTop</set>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_3">
-        <item alignment="Qt::AlignHCenter">
+        <item alignment="Qt::AlignmentFlag::AlignHCenter">
          <widget class="QLabel" name="label">
           <property name="font">
            <font>
@@ -85,7 +85,7 @@
       </item>
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item alignment="Qt::AlignHCenter">
+        <item alignment="Qt::AlignmentFlag::AlignHCenter">
          <widget class="QLabel" name="label_2">
           <property name="font">
            <font>
@@ -127,7 +127,7 @@
         <property name="spacing">
          <number>6</number>
         </property>
-        <item alignment="Qt::AlignRight">
+        <item alignment="Qt::AlignmentFlag::AlignRight">
          <widget class="QLabel" name="label_3">
           <property name="font">
            <font>
@@ -140,7 +140,7 @@
           </property>
          </widget>
         </item>
-        <item alignment="Qt::AlignLeft">
+        <item alignment="Qt::AlignmentFlag::AlignLeft">
          <widget class="QSpinBox" name="best_of">
           <property name="minimumSize">
            <size>
@@ -159,7 +159,7 @@
         </item>
        </layout>
       </item>
-      <item alignment="Qt::AlignHCenter">
+      <item alignment="Qt::AlignmentFlag::AlignHCenter">
        <widget class="QLabel" name="label_4">
         <property name="font">
          <font>
@@ -183,7 +183,7 @@
            </font>
           </property>
           <property name="alignment">
-           <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+           <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignHCenter</set>
           </property>
          </widget>
         </item>
@@ -196,7 +196,44 @@
            </font>
           </property>
           <property name="alignment">
-           <set>Qt::AlignBottom|Qt::AlignHCenter</set>
+           <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignHCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_6">
+        <property name="font">
+         <font>
+          <pointsize>8</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>INNING</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QComboBox" name="half_inning">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="inning">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>30</number>
           </property>
          </widget>
         </item>
@@ -216,37 +253,37 @@
         </property>
        </widget>
       </item>
-      <item alignment="Qt::AlignHCenter">
-         <widget class="QLabel" name="label_5">
-          <property name="font">
-           <font>
-            <pointsize>8</pointsize>
-            <bold>true</bold>
-           </font>
-          </property>
-          <property name="text">
-           <string>LIVE GAMES</string>
-          </property>
-         </widget>
+      <item alignment="Qt::AlignmentFlag::AlignHCenter">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>8</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>LIVE GAMES</string>
+        </property>
+       </widget>
       </item>
       <item>
-         <widget class="QComboBox" name="rioLiveMatchList">
-          <property name="minimumSize">
-           <size>
-            <width>10</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-            <bold>false</bold>
-           </font>
-          </property>
-          <property name="editable">
-           <bool>true</bool>
-          </property>
-         </widget>
+       <widget class="QComboBox" name="rioLiveMatchList">
+        <property name="minimumSize">
+         <size>
+          <width>10</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btRioLoadLiveGames">
@@ -259,9 +296,6 @@
        <widget class="QCheckBox" name="cbRioFlipRosters">
         <property name="text">
          <string>HOME ON LEFT</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignBottom|Qt::AlignHCenter</set>
         </property>
        </widget>
       </item>

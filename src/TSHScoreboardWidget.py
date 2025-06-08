@@ -463,6 +463,23 @@ class TSHScoreboardWidget(QWidget):
         )
         self.scoreColumn.findChild(
             QSpinBox, "score_right").valueChanged.emit(0)
+        
+        self.halfInningComboBox = self.scoreColumn.findChild(QComboBox, "half_inning")
+        self.halfInningComboBox.addItems(["Top", "Bottom"])
+        
+        self.halfInningComboBox.currentIndexChanged.connect(
+            lambda index: StateManager.Set(
+                f"score.{self.scoreboardNumber}.half_inning", self.halfInningComboBox.currentText()
+            )
+        )   
+        
+        self.inningSpinBox = self.scoreColumn.findChild(QSpinBox, "inning")
+
+        self.inningSpinBox.valueChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.inning", value
+                )
+        )
 
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
             lambda: self.ExportTeamLogo(
