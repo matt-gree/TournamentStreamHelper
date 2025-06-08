@@ -1093,6 +1093,17 @@ class TSHScoreboardWidget(QWidget):
                 scoreContainers[0].setValue(data.get("team1score"))
             if data.get("team2score"):
                 scoreContainers[1].setValue(data.get("team2score"))
+
+            inningContainers = [
+                self.scoreColumn.findChild(QComboBox, "half_inning"),
+                self.scoreColumn.findChild(QSpinBox, "inning")
+            ]
+
+            if data.get("half_inning"):
+                inningContainers[0].setCurrentText(data.get("half_inning"))
+            if data.get("inning"):
+                inningContainers[1].setValue(data.get("inning"))
+            
             if data.get("bestOf"):
                 self.scoreColumn.findChild(
                     QSpinBox, "best_of").setValue(data.get("bestOf"))
