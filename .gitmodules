@@ -4,5 +4,4 @@
 
 [submodule "layout"]
 	path = layout
-	url = https://github.com/TournamentStreamHelper/TournamentStreamHelper-layouts
-	branch = main
+	url = https://github.com/matt-gree/TournamentStreamHelper-layouts
