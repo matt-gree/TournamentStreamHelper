@@ -836,12 +836,12 @@ class TSHScoreboardWidget(QWidget):
 
     def load_rio_game(self, parsed_data):
         self.charNumber.setValue(9)
-        self.rio_savedLivedData = parsed_data
+        self.rio_savedLiveData = parsed_data
         self.ChangeSetData(parsed_data)
     
     def rio_toggleRosterFlip(self):
         self.rio_homeRosterLeftIndicator = self.scoreColumn.findChild(QCheckBox, "cbRioFlipRosters").isChecked()
-        self.ChangeSetData(self.rio_savedLivedData)
+        self.ChangeSetData(self.rio_savedLiveData)
         
     def AutoUpdate(self, data):
         TSHTournamentDataProvider.instance.GetMatch(
@@ -1258,7 +1258,7 @@ class TSHScoreboardWidget(QWidget):
                         "gamerTag")]
                     
         #Rio - attach extra data from the live game API.
-        if 'home_score' in self.rio_selectedLiveGame: #check there is a non-empty game loaded before calling these functions.
+        if self.rio_savedLiveData and "home_score" in self.rio_savedLiveData:
             self.charNumber.setValue(9)
             data = self.rio_LoadLiveGame(data)
 
