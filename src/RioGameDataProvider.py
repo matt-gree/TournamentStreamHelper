@@ -3,11 +3,34 @@
 import requests
 import json
 import time
+import platform
+import os
 from pathlib import Path
 from qtpy.QtCore import QThreadPool
 from qtpy.QtCore import QObject, Signal
-from pyRio.lookup import LookupDicts as rioLU
+from pyRio.lookup import LookupDicts, Lookup
 from .Workers import Worker
+from qtpy.QtCore import QFileSystemWatcher, QTimer
+
+from pyRio.stat_file_parser import HudObj
+
+def get_hud_file_path() -> Path:
+    """
+    Returns the OS-specific path to Project Rio's decoded.hud.json file.
+    """
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        home = Path.home()
+        return home / "Library" / "Application Support" / "Project Rio" / "HudFiles" / "decoded.hud.json"
+
+    elif system == "Windows":
+        home = Path.home()
+        return home / "Documents" / "Project Rio" / "HudFiles" / "decoded.hud.json"
+
+    else:
+        print("[RioHUDWatcher] Unsupported OS")
+        return Path("/invalid/path")
 
 class RioGameDataProvider(QObject):
     """
@@ -18,13 +41,17 @@ class RioGameDataProvider(QObject):
     live_games_updated = Signal(list)
     live_game_selected = Signal(dict)
 
-    def __init__(self, hud_folder=None):
+    def __init__(self):
         super().__init__()
         self.API_URL = "https://api.projectrio.app/populate_db/ongoing_game/"
-        self.hud_folder = hud_folder or (Path(__file__).parent.parent / "test")
+        self.hud_file = get_hud_file_path()
         self.live_games = []
         self.current_game = None
         self.threadPool = QThreadPool()
+        
+        self.hud_watcher = RioHUDWatcher(self.hud_file)
+        self.hud_watcher._reload_game_data()
+        self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
 
     def FetchGames(self):
         """
@@ -52,17 +79,11 @@ class RioGameDataProvider(QObject):
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to fetch server games: {e}")
 
-        # Fetch HUD games
-        try:
-            hud_file = self.hud_folder / "liveGameExample.json"
-            with open(hud_file, "r") as f:
-                data = json.load(f)
-                hud_games = data.get("ongoing_games", [])
-                for g in hud_games:
-                    g["source"] = "hud"
-                games.extend(hud_games)
-        except Exception as e:
-            print(f"[RioGameDataProvider] Failed to load HUD data: {e}")
+        # Fetch HUD game from cached watcher state
+        hud_game = self.hud_watcher.latest_game_data
+        if hud_game:
+            hud_game["source"] = "hud"
+            games.append(hud_game)
 
         return games
 
@@ -93,13 +114,13 @@ class RioGameDataProvider(QObject):
             for i in range(2):
                 team = "home" if i == 0 else "away"
                 roster = [
-                    rioLU.CHAR_NAME[game_json[f"{team}_roster_{j}_char"]]
+                    Lookup().lookup(LookupDicts.CHAR_NAME, game_json[f"{team}_roster_{j}_char"])
                     for j in range(9)
                 ]
                 data["entrants"][i][0]["roster"] = roster
                 data["entrants"][i][0]["captainIndex"] = game_json[f"{team}_captain"]
                 data["entrants"][i][0]['rioName'] = game_json[f'{team}_player']
-                
+
                 print(f"[DEBUG] Parsed game data for team {team}: {data['entrants'][i][0]}")
 
             data['half_inning'] = 'Top' if game_json["half_inning"] == 0 else 'Bottom'
@@ -109,3 +130,78 @@ class RioGameDataProvider(QObject):
             print(f"[RioGameDataProvider] Failed to parse game data: {e}")
 
         return data
+    
+    def _on_hud_game_update(self, game_json):
+        parsed = self.parse_game_data(game_json)
+        parsed["source"] = "hud"
+        self.current_game = parsed
+        self.live_game_selected.emit(parsed)
+    
+class RioHUDWatcher(QObject):
+    hud_game_updated = Signal(dict)
+
+    def __init__(self, hud_file: Path):
+        super().__init__()
+        self.hud_file = hud_file
+
+        print(f"[RioHUDWatcher] Initialized. Watching: {self.hud_file}")
+
+        self.watcher = QFileSystemWatcher()
+        self.latest_game_data = None
+        self.watcher.addPath(str(self.hud_file))
+        self.watcher.fileChanged.connect(self._on_file_changed)
+
+        self.timer = QTimer()
+        self.timer.setInterval(100)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self._reload_game_data)
+
+    def _on_file_changed(self):
+        self.timer.start()
+
+    def _reload_game_data(self):
+        try:
+            with open(self.hud_file, "r") as f:
+                data = json.load(f)
+                game = self.convert_hud_data_format(HudObj(data))
+                self.latest_game_data = game  # <-- Save for access
+                self.hud_game_updated.emit(game)
+        except Exception as e:
+            print(f"[RioHUDWatcher] Error reading HUD file: {e}")
+        
+    def convert_hud_data_format(self, hud_data: HudObj):
+        game = {
+            "away_captain": hud_data.captain_index(1),
+            "away_player": hud_data.player(1),
+            "away_score": hud_data.score(1),
+            "away_stars": hud_data.team_stars(1),
+            "batter": hud_data.batter_roster_location(),
+            "half_inning": hud_data.half_inning(),
+            "home_captain": hud_data.captain_index(0),
+            "home_player": hud_data.player(0),
+            "home_score": hud_data.score(0),
+            "home_stars": hud_data.team_stars(0),
+            "inning": hud_data.inning(),
+            "outs": hud_data.outs(),
+            "pitcher": hud_data.pitcher_roster_location(),
+            "runner_on_first": hud_data.runner_on_first(),
+            "runner_on_second": hud_data.runner_on_second(),
+            "runner_on_third": hud_data.runner_on_third(),
+            "stadium_id": -1,
+            "start_time": -1,
+            "tag_set": -1
+        }
+
+        def flatten_roster_dict(roster_dict: dict, team_name: str) -> dict:
+            flat = {}
+            for index, data in roster_dict.items():
+                key = f"{team_name}_roster_{index}_char"
+                flat[key] = Lookup().lookup(LookupDicts.CHAR_NAME, data["char_id"])
+            return flat
+        
+        game.update(flatten_roster_dict(hud_data.roster(0), 'away'))
+        game.update(flatten_roster_dict(hud_data.roster(1), 'home'))
+
+        print(game)
+
+        return game
