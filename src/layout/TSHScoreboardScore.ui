@@ -239,6 +239,44 @@
         </item>
        </layout>
       </item>
+      <item alignment="Qt::AlignmentFlag::AlignHCenter">
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>8</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="text">
+         <string>RUNNERS</string>
+        </property>
+       </widget>
+      </item>
+      <item alignment="Qt::AlignmentFlag::AlignHCenter">
+      <layout class="QHBoxLayout" name="horizontalLayout_runners">
+      <item>
+      <widget class="QCheckBox" name="cbRioRunnerOn1">
+         <property name="text">
+         <string>1ST</string>
+         </property>
+      </widget>
+      </item>
+      <item>
+      <widget class="QCheckBox" name="cbRioRunnerOn2">
+         <property name="text">
+         <string>2ND</string>
+         </property>
+      </widget>
+      </item>
+      <item>
+      <widget class="QCheckBox" name="cbRioRunnerOn3">
+         <property name="text">
+         <string>3RD</string>
+         </property>
+      </widget>
+      </item>
+      </layout>
+      </item>
       <item>
        <widget class="QPushButton" name="btResetScore">
         <property name="text">
@@ -292,7 +330,7 @@
         </property>
        </widget>
       </item>
-      <item>
+      <item alignment="Qt::AlignmentFlag::AlignHCenter">
        <widget class="QCheckBox" name="cbRioFlipRosters">
         <property name="text">
          <string>HOME ON LEFT</string>

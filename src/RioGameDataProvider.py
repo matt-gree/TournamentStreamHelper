@@ -126,6 +126,12 @@ class RioGameDataProvider(QObject):
             data['half_inning'] = 'Top' if game_json["half_inning"] == 0 else 'Bottom'
             data['inning'] = game_json["inning"]
 
+            data['runnerOn1'] = game_json["runner_on_first"]
+            data['runnerOn2'] = game_json["runner_on_second"]
+            data['runnerOn3'] = game_json["runner_on_third"]
+
+            print(game_json)
+
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to parse game data: {e}")
 
