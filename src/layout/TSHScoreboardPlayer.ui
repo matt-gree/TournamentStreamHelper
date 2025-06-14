@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>456</width>
-    <height>451</height>
+    <height>669</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -28,7 +28,20 @@
    <locale language="English" country="UnitedStates"/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="2">
+   <item row="2" column="1">
+    <widget class="QLabel" name="nameLabel">
+     <property name="font">
+      <font>
+       <pointsize>8</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>SPONSOR/TAG</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLineEdit" name="team">
@@ -65,7 +78,7 @@
      </item>
      <item>
       <widget class="QLineEdit" name="rioName">
-      <property name="font">
+       <property name="font">
         <font>
          <pointsize>9</pointsize>
         </font>
@@ -77,59 +90,33 @@
      </item>
     </layout>
    </item>
-   <item row="15" column="2">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QComboBox" name="country">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <pointsize>9</pointsize>
-        </font>
-       </property>
-       <property name="editable">
-        <bool>true</bool>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
-       </property>
-       <property name="placeholderText">
-        <string>Region</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="state">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <pointsize>9</pointsize>
-        </font>
-       </property>
-       <property name="editable">
-        <bool>true</bool>
-       </property>
-       <property name="sizeAdjustPolicy">
-        <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
-       </property>
-       <property name="placeholderText">
-        <string>Country</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+   <item row="17" column="0" colspan="3">
+    <widget class="QGroupBox" name="characters">
+     <property name="font">
+      <font>
+       <pointsize>8</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="title">
+      <string>CHARACTERS</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout"/>
+    </widget>
    </item>
-   <item row="8" column="2">
+   <item row="5" column="1" colspan="2">
+    <widget class="QLineEdit" name="real_name">
+     <property name="font">
+      <font>
+       <pointsize>9</pointsize>
+      </font>
+     </property>
+     <property name="placeholderText">
+      <string>Real Name</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QLineEdit" name="twitter">
@@ -157,19 +144,7 @@
      </item>
     </layout>
    </item>
-   <item row="5" column="2" colspan="2">
-    <widget class="QLineEdit" name="real_name">
-     <property name="font">
-      <font>
-       <pointsize>9</pointsize>
-      </font>
-     </property>
-     <property name="placeholderText">
-      <string>Real Name</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="2">
+   <item row="4" column="1">
     <widget class="QLabel" name="real_nameLabel">
      <property name="font">
       <font>
@@ -182,7 +157,51 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="2">
+   <item row="1" column="1">
+    <layout class="QHBoxLayout" name="titleContainer">
+     <item>
+      <widget class="QLabel" name="title">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>PLAYER</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="15" column="1">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QLabel" name="label">
+      <property name="font">
+      <font>
+       <pointsize>8</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+       <property name="text">
+        <string>TEAM NAME</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="msb_team">
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="7" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
       <widget class="QLabel" name="twitterLabel">
@@ -212,65 +231,74 @@
      </item>
     </layout>
    </item>
-   <item row="13" column="2">
-    <widget class="QLabel" name="locationLabel">
-     <property name="font">
-      <font>
-       <pointsize>8</pointsize>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>LOCATION</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <layout class="QHBoxLayout" name="titleContainer">
+   <item row="9" column="1">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
-      <widget class="QLabel" name="title">
+      <widget class="QLabel" name="locationLabel">
        <property name="font">
         <font>
-         <pointsize>10</pointsize>
+         <pointsize>8</pointsize>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>PLAYER</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignCenter</set>
+        <string>LOCATION</string>
        </property>
       </widget>
      </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QComboBox" name="country">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>9</pointsize>
+          </font>
+         </property>
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
+         </property>
+         <property name="placeholderText">
+          <string>Region</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="state">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>9</pointsize>
+          </font>
+         </property>
+         <property name="editable">
+          <bool>true</bool>
+         </property>
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
+         </property>
+         <property name="placeholderText">
+          <string>Country</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
     </layout>
-   </item>
-   <item row="2" column="2">
-    <widget class="QLabel" name="nameLabel">
-     <property name="font">
-      <font>
-       <pointsize>8</pointsize>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>SPONSOR/TAG</string>
-     </property>
-    </widget>
-   </item>
-   <item row="18" column="0" colspan="4">
-    <widget class="QGroupBox" name="characters">
-     <property name="font">
-      <font>
-       <pointsize>8</pointsize>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="title">
-      <string>CHARACTERS</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout"/>
-    </widget>
    </item>
   </layout>
  </widget>

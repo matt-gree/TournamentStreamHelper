@@ -293,9 +293,9 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="cbRioFlipRosters">
+       <widget class="QPushButton" name="btSwapRioData">
         <property name="text">
-         <string>HOME ON LEFT</string>
+         <string>SWAP RIO TEAM DATA</string>
         </property>
        </widget>
       </item>

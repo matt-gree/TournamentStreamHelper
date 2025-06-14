@@ -502,24 +502,23 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(
             QPushButton, "btResetScore").setIcon(QIcon('assets/icons/undo.svg'))
         
+        # Load games on start
+        self.rio_updateLiveGameList()
+        
         self.scoreColumn.findChild(
             QPushButton, "btRioLoadLiveGames").clicked.connect(self.rio_updateLiveGameList)
         self.scoreColumn.findChild(
             QPushButton, "btRioLoadLiveGames").setIcon(QIcon('assets/icons/rio.svg'))
         
-        self.rio_provider = RioGameDataProvider()
-        self.rio_provider.live_games_updated.connect(self.populate_rio_dropdown)
-        self.rio_provider.live_game_selected.connect(self.load_rio_game)
+        RioGameDataProvider.instance.live_games_updated.connect(self.populate_rio_dropdown)
+        RioGameDataProvider.instance.live_game_selected.connect(self.load_rio_game)
         self.rio_live_game_lookup = {}
         
         self.scoreColumn.findChild(
             QComboBox, "rioLiveMatchList").currentTextChanged.connect(self.rio_setLiveGame)
         
-        self.scoreColumn.findChild(
-            QCheckBox, "cbRioFlipRosters").setChecked(True)
-        self.scoreColumn.findChild(
-            QCheckBox, "cbRioFlipRosters").stateChanged.connect(self.rio_toggleRosterFlip)
-        self.rio_homeRosterLeftIndicator = True 
+        self.scoreColumn.findChild(QPushButton, "btSwapRioData").clicked.connect(self.OnSwapRioDataClicked)
+
 
         # Add default and user tournament phase title files
         self.scoreColumn.findChild(QComboBox, "phase").addItem("")
@@ -806,7 +805,7 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
 
     def rio_updateLiveGameList(self):
-        self.rio_provider.FetchGames()
+        RioGameDataProvider.instance.FetchGames()
 
     def populate_rio_dropdown(self, games):
         combo = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
@@ -832,16 +831,45 @@ class TSHScoreboardWidget(QWidget):
     def rio_setLiveGame(self, label):
         game = self.rio_live_game_lookup.get(label)
         if game:
-            self.rio_provider.SelectLiveGame(game)
+            RioGameDataProvider.instance.SelectLiveGame(game)
 
     def load_rio_game(self, parsed_data):
         self.charNumber.setValue(9)
         self.rio_savedLiveData = parsed_data
         self.ChangeSetData(parsed_data)
-    
-    def rio_toggleRosterFlip(self):
-        self.rio_homeRosterLeftIndicator = self.scoreColumn.findChild(QCheckBox, "cbRioFlipRosters").isChecked()
-        self.ChangeSetData(self.rio_savedLiveData)
+
+    def ApplyRioRosterNames(self, data):
+        teamInstances = [self.team1playerWidgets, self.team2playerWidgets]
+
+        if not data.get("entrants"):
+            return
+        
+        data['entrants'].reverse()
+
+        logger.debug(f'[RIO] {data}')
+
+        for t, team in enumerate(data["entrants"]):
+            target_team_widgets = teamInstances[t]
+            logger.debug(f"[RIO] teamInstance[{t}] = {target_team_widgets}")
+
+            rio_name = team[0].get("rioName")
+            msb_team = team[0].get("msb_team")
+
+            logger.debug(f"[RIO] Setting rioName on team {t}: {rio_name}")
+            rio_name_target = target_team_widgets[0].findChild(QLineEdit, "rioName")
+            rio_name_target.setText(rio_name)
+            rio_name_target.editingFinished.emit()
+
+            logger.debug(f"[RIO] Setting msb_team on team {t}: {msb_team}")
+            combo = target_team_widgets[0].findChild(QComboBox, "msb_team")
+            index = combo.findText(msb_team, Qt.MatchFlag.MatchExactly)
+            combo.setCurrentIndex(index)
+
+            for c, character in enumerate(team[0].get("roster")):
+                target_team_widgets[0].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+
+    def OnSwapRioDataClicked(self):
+        self.ApplyRioRosterNames(self.rio_savedLiveData)
         
     def AutoUpdate(self, data):
         TSHTournamentDataProvider.instance.GetMatch(
@@ -1140,22 +1168,12 @@ class TSHScoreboardWidget(QWidget):
                                          self.team2playerWidgets]
                         
                         #rosters are on their own swap toggle from the player data.
-                        if self.rio_homeRosterLeftIndicator:
-                            teamInstance_rosters = teamInstances[t]
-                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
-                            rio_name = team[0].get("rioName")
-                            if rio_name_target and rio_name:
-                                logger.debug(f"[RIO] Setting rioName on team {t} (normal): {rio_name}")
-                                rio_name_target.setText(rio_name)
-                                rio_name_target.editingFinished.emit()
-                        else:
-                            teamInstance_rosters = teamInstances[1-t]
-                            rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
-                            rio_name = team[0].get("rioName")
-                            if rio_name_target and rio_name:
-                                logger.debug(f"[RIO] Setting rioName on team {t} (flipped): {rio_name}")
-                                rio_name_target.setText(rio_name)
-                                rio_name_target.editingFinished.emit()
+                        # TODO Clean this code up
+                        teamInstance_rosters = teamInstances[t]
+                        rio_name_target = teamInstance_rosters[0].findChild(QLineEdit, "rioName")
+                        rio_name = team[0].get("rioName")
+                        rio_name_target.setText(rio_name)
+                        rio_name_target.editingFinished.emit()
 
                         if self.teamsSwapped:
                             teamInstances.reverse()
@@ -1191,6 +1209,11 @@ class TSHScoreboardWidget(QWidget):
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
                                     teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+
+                                team_name = RioGameDataProvider.instance.GetMSBTeamName(player.get('roster'), player.get('captainIndex'))
+                                combo = teamInstance[p].findChild(QComboBox, "msb_team")
+                                index = combo.findText(team_name, Qt.MatchFlag.MatchExactly)
+                                combo.setCurrentIndex(index)
                         
 
                     self.team1playerWidgets[0].CharactersChanged() 

@@ -20,6 +20,7 @@ import math
 import random
 from .Helpers.TSHBadWordFilter import TSHBadWordFilter
 from loguru import logger
+from src.RioGameDataProvider import RioGameDataProvider
 
 
 class TSHScoreboardPlayerWidgetSignals(QObject):
@@ -70,6 +71,7 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.character_container = self.findChild(QWidget, "characters")
 
         self.LoadCountries()
+        self.LoadMSBTeamNames()
 
         TSHCountryHelper.signals.countriesUpdated.connect(self.LoadCountries)
 
@@ -617,6 +619,38 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         state: QComboBox = self.findChild(QComboBox, "state")
         state.setModel(stateModel)
         state.setCurrentIndex(0)
+
+    def LoadMSBTeamNames(self):
+        try:
+            team_names = RioGameDataProvider.instance.GetMSBTeamModel()  # returns a list of strings
+
+            model = QStandardItemModel()
+
+            for team_name in team_names:
+                item = QStandardItem()
+                item.setText(team_name)
+                item.setData(team_name, Qt.ItemDataRole.UserRole)
+
+                # Load logo image if available
+                path = f'./assets/rio_teamLogos/{team_name}.png'
+                if os.path.exists(path):
+                    item.setIcon(QIcon(path))
+                else:
+                    logger.warning(f"[MSB] Missing logo image for team: {team_name}")
+
+                model.appendRow(item)
+
+            # Apply model to the combo box
+            msb_combo: QComboBox = self.findChild(QComboBox, "msb_team")
+            msb_combo.setModel(model)
+            msb_combo.setEditable(True)
+            msb_combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+            msb_combo.completer().setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            msb_combo.setFont(QFont(msb_combo.font().family(), 9))
+            msb_combo.lineEdit().setFont(QFont(msb_combo.font().family(), 9))
+
+        except Exception as e:
+            logger.error(f"Failed to load MSB team names: {e}")
 
     def LoadSkinOptions(self, element, target):
         characterData = element.currentData()
