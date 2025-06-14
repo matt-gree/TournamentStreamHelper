@@ -481,6 +481,28 @@ class TSHScoreboardWidget(QWidget):
                 )
         )
 
+        self.runnerOn1CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1")
+        self.runnerOn2CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2")
+        self.runnerOn3CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2")
+
+        self.runnerOn1CheckBox.stateChanged.connect(
+            lambda index: StateManager.Set(
+                f"score.{self.scoreboardNumber}.runnerOn1", self.runnerOn1CheckBox.isChecked()
+            )
+        ) 
+        
+        self.runnerOn2CheckBox.stateChanged.connect(
+            lambda index: StateManager.Set(
+                f"score.{self.scoreboardNumber}.runnerOn2", self.runnerOn2CheckBox.isChecked()
+            )
+        )   
+        
+        self.runnerOn3CheckBox.stateChanged.connect(
+            lambda index: StateManager.Set(
+                f"score.{self.scoreboardNumber}.runnerOn3", self.runnerOn3CheckBox.isChecked()
+            )
+        )     
+
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
             lambda: self.ExportTeamLogo(
                 "1", self.team1column.findChild(QLineEdit, "teamName").text())
@@ -1133,6 +1155,19 @@ class TSHScoreboardWidget(QWidget):
                 inningContainers[0].setCurrentText(data.get("half_inning"))
             if data.get("inning"):
                 inningContainers[1].setValue(data.get("inning"))
+
+            runnerContainers = [
+                self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1"),
+                self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2"),
+                self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn3"),
+            ]
+
+            for i in range(3):
+                print(data.get(f'runnerOn{i+1}'))
+                if data.get(f'runnerOn{i+1}'):
+                    runnerContainers[i].setChecked(True)
+                else:
+                    runnerContainers[i].setChecked(False)
             
             if data.get("bestOf"):
                 self.scoreColumn.findChild(
