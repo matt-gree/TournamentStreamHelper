@@ -1322,4 +1322,4 @@ class TSHScoreboardWidget(QWidget):
             players, characters = 1, 1
         print(players, "players", characters, "characters")
         self.playerNumber.setValue(players)
-        self.charNumber.setValue(characters)
+        self.charNumber.setValue(9) # RIO: hard code to 9
