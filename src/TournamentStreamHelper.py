@@ -478,11 +478,11 @@ class Window(QMainWindow):
         self.updateAction = action
         action.setIcon(QIcon('assets/icons/undo.svg'))
         action.triggered.connect(self.CheckForUpdates)
-        action = self.optionsBt.menu().addAction(
-            QApplication.translate("app", "Download assets"))
-        action.setIcon(QIcon('assets/icons/download.svg'))
-        action.triggered.connect(TSHAssetDownloader.instance.DownloadAssets)
-        self.downloadAssetsAction = action
+        #action = self.optionsBt.menu().addAction(
+        #    QApplication.translate("app", "Download assets"))
+        #action.setIcon(QIcon('assets/icons/download.svg'))
+        #action.triggered.connect(TSHAssetDownloader.instance.DownloadAssets)
+        #self.downloadAssetsAction = action
 
         action = self.optionsBt.menu().addAction(
             QApplication.translate("app", "Light mode"))
