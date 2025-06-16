@@ -5,6 +5,8 @@ user_data/sponsor_logo/
 !user_data/sponsor_logo/*.txt
 user_data/team_logo/
 !user_data/team_logo/*.txt
+!user_data/games
+!user_data/games/msb/*
 out/
 update.tar.gz
 __pycache__/
