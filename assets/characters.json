@@ -113628,6 +113628,84 @@
         ],
         "characterId": null,
         "expand": []
+      },
+      {
+        "id": 2699,
+        "name": "Elena",
+        "isCommon": null,
+        "videogameId": 43868,
+        "externalIdMap": null,
+        "images": [
+          {
+            "id": 8353749,
+            "width": 512,
+            "height": 512,
+            "ratio": 1,
+            "type": "icon",
+            "url": "https://images.start.gg/images/character/2699/image-bc0a5b64a83a6c81643bdb37f7f3d10e.png",
+            "isOriginal": true,
+            "entity": null,
+            "entityId": null,
+            "uploadedBy": null,
+            "createdAt": null,
+            "updatedAt": null
+          },
+          {
+            "id": 8353750,
+            "width": 512,
+            "height": 512,
+            "ratio": 1,
+            "type": "stockIcon",
+            "url": "https://images.start.gg/images/character/2699/image-bc0a5b64a83a6c81643bdb37f7f3d10e.png",
+            "isOriginal": true,
+            "entity": null,
+            "entityId": null,
+            "uploadedBy": null,
+            "createdAt": null,
+            "updatedAt": null
+          }
+        ],
+        "characterId": null,
+        "expand": []
+      },
+      {
+        "id": 2700,
+        "name": "Fahkumram",
+        "isCommon": null,
+        "videogameId": 49783,
+        "externalIdMap": null,
+        "images": [
+          {
+            "id": 8353760,
+            "width": 512,
+            "height": 512,
+            "ratio": 1,
+            "type": "icon",
+            "url": "https://images.start.gg/images/character/2700/image-90fcc832b21e903d4ee7446119cbbcd0.png",
+            "isOriginal": true,
+            "entity": null,
+            "entityId": null,
+            "uploadedBy": null,
+            "createdAt": null,
+            "updatedAt": null
+          },
+          {
+            "id": 8353761,
+            "width": 512,
+            "height": 512,
+            "ratio": 1,
+            "type": "stockIcon",
+            "url": "https://images.start.gg/images/character/2700/image-a72476335d355fddb6c2f9a67506efae.png",
+            "isOriginal": true,
+            "entity": null,
+            "entityId": null,
+            "uploadedBy": null,
+            "createdAt": null,
+            "updatedAt": null
+          }
+        ],
+        "characterId": null,
+        "expand": []
       }
     ]
   },
@@ -116038,7 +116116,9 @@
     2695,
     2696,
     2697,
-    2698
+    2698,
+    2699,
+    2700
   ],
   "resultEntity": "character",
   "actionRecords": []

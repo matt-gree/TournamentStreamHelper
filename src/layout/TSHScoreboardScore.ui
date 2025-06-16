@@ -330,10 +330,10 @@
         </property>
        </widget>
       </item>
-      <item alignment="Qt::AlignmentFlag::AlignHCenter">
-       <widget class="QCheckBox" name="cbRioFlipRosters">
+      <item>
+       <widget class="QPushButton" name="btSwapRioData">
         <property name="text">
-         <string>HOME ON LEFT</string>
+         <string>SWAP RIO TEAM DATA</string>
         </property>
        </widget>
       </item>

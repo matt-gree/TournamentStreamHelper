@@ -10,9 +10,11 @@ from qtpy.QtCore import QThreadPool
 from qtpy.QtCore import QObject, Signal
 from pyRio.lookup import LookupDicts, Lookup
 from .Workers import Worker
-from qtpy.QtCore import QFileSystemWatcher, QTimer
+from qtpy.QtCore import QFileSystemWatcher, QTimer, Qt
+from qtpy.QtGui import QStandardItemModel, QStandardItem
 
 from pyRio.stat_file_parser import HudObj
+from pyRio.team_name_algo import In_Game_Team_Names_List, team_name
 
 def get_hud_file_path() -> Path:
     """
@@ -33,16 +35,16 @@ def get_hud_file_path() -> Path:
         return Path("/invalid/path")
 
 class RioGameDataProvider(QObject):
-    """
-    Provides live game data from Project Rio, including server-based and HUD (local) games.
-    Emits signals when new data is available.
-    """
+    instance = None
 
     live_games_updated = Signal(list)
     live_game_selected = Signal(dict)
 
     def __init__(self):
         super().__init__()
+        if RioGameDataProvider.instance is not None:
+            raise Exception("RioGameDataProvider is a singleton! Use RioGameDataProvider.instance")
+        RioGameDataProvider.instance = self
         self.API_URL = "https://api.projectrio.app/populate_db/ongoing_game/"
         self.hud_file = get_hud_file_path()
         self.live_games = []
@@ -120,6 +122,7 @@ class RioGameDataProvider(QObject):
                 data["entrants"][i][0]["roster"] = roster
                 data["entrants"][i][0]["captainIndex"] = game_json[f"{team}_captain"]
                 data["entrants"][i][0]['rioName'] = game_json[f'{team}_player']
+                data["entrants"][i][0]['msb_team'] = self.GetMSBTeamName(data["entrants"][i][0]["roster"], data["entrants"][i][0]["captainIndex"])
 
                 print(f"[DEBUG] Parsed game data for team {team}: {data['entrants'][i][0]}")
 
@@ -142,6 +145,12 @@ class RioGameDataProvider(QObject):
         parsed["source"] = "hud"
         self.current_game = parsed
         self.live_game_selected.emit(parsed)
+
+    def GetMSBTeamModel(self) -> list:
+        return In_Game_Team_Names_List
+    
+    def GetMSBTeamName(self, roster, captain_index):
+        return team_name(roster, roster[captain_index])
     
 class RioHUDWatcher(QObject):
     hud_game_updated = Signal(dict)
@@ -211,3 +220,5 @@ class RioHUDWatcher(QObject):
         print(game)
 
         return game
+    
+RioGameDataProvider.instance = RioGameDataProvider()
