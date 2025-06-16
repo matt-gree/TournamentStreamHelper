@@ -1222,10 +1222,17 @@ class TSHScoreboardWidget(QWidget):
                                 for idx, (_, _, _, _, radio_button) in enumerate(teamInstance_rosters[p].character_elements):
                                     radio_button.setChecked(idx == captain_index)
                             
-
+                            print(player.get("roster"))
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
-                                    teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                                    characterBox = teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}")
+                                    characterIndex = 0
+                                    for i in range(characterBox.count()):
+                                        if characterBox.itemText(i) == character:
+                                            characterIndex = i
+                                            break
+                                    #need to set index instead of text so it loads the icons.
+                                    characterBox.setCurrentIndex(characterIndex)
                         
 
                     self.team1playerWidgets[0].CharactersChanged() 
