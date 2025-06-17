@@ -59,7 +59,7 @@ class TSHSettingsWindow(QDialog):
                 "settings.disable_autoupdate", "Disable automatic set updating for the scoreboard"),
             "disable_autoupdate",
             "checkbox",
-            False
+            True
         ))
 
         generalSettings.append((
