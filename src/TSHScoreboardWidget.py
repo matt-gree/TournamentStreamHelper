@@ -781,7 +781,22 @@ class TSHScoreboardWidget(QWidget):
 
         try:
             for i, p in enumerate(self.team1playerWidgets):
-                p.SwapWith(self.team2playerWidgets[i])
+                p1 = self.team1playerWidgets[i]
+                p2 = self.team2playerWidgets[i]
+
+                # Get captain indices BEFORE swap
+                cap1 = StateManager.Get(f"{p1.path}.rio_captainIndex") or 0
+                cap2 = StateManager.Get(f"{p2.path}.rio_captainIndex") or 0
+
+                # Swap players
+                p1.SwapWith(p2)
+
+                # Apply captain index to the swapped players
+                if 0 <= cap2 < len(p1.character_elements):
+                    p1.character_elements[cap2][4].setChecked(True)
+
+                if 0 <= cap1 < len(p2.character_elements):
+                    p2.character_elements[cap1][4].setChecked(True)
 
             # Scores
             scoreLeft = self.scoreColumn.findChild(
@@ -861,6 +876,12 @@ class TSHScoreboardWidget(QWidget):
         self.ChangeSetData(parsed_data)
 
     def ApplyRioRosterNames(self, data):
+        StateManager.BlockSaving()
+
+        # Lock all player widgets
+        for p in self.playerWidgets:
+            p.dataLock.acquire()
+
         teamInstances = [self.team1playerWidgets, self.team2playerWidgets]
 
         if not data.get("entrants"):
@@ -888,7 +909,18 @@ class TSHScoreboardWidget(QWidget):
             combo.setCurrentIndex(index)
 
             for c, character in enumerate(team[0].get("roster")):
-                target_team_widgets[0].findChild(QComboBox, f"character_{c+1}").setCurrentText(character)
+                character_box = target_team_widgets[0].findChild(QComboBox, f"character_{c+1}")
+                index = character_box.findText(character, Qt.MatchFlag.MatchExactly)
+                character_box.setCurrentIndex(index)
+
+            captain_index = team[0].get("captainIndex", 0)
+            radio_button = target_team_widgets[0].character_elements[captain_index][4]
+            radio_button.setChecked(True)
+            
+        for p in self.playerWidgets:
+            p.dataLock.release()
+
+        StateManager.ReleaseSaving()
 
     def OnSwapRioDataClicked(self):
         self.ApplyRioRosterNames(self.rio_savedLiveData)
@@ -1237,8 +1269,8 @@ class TSHScoreboardWidget(QWidget):
                             
                             captain_index = player.get("captainIndex", 0)
                             if hasattr(teamInstance_rosters[p], "character_elements"):
-                                for idx, (_, _, _, _, radio_button) in enumerate(teamInstance_rosters[p].character_elements):
-                                    radio_button.setChecked(idx == captain_index)
+                                radio_button = teamInstance_rosters[p].character_elements[captain_index][4]
+                                radio_button.setChecked(True)
                             
                             print(player.get("roster"))
                             if player.get("roster"):
