@@ -147,7 +147,7 @@ class RioGameDataProvider(QObject):
         self.live_game_selected.emit(parsed)
 
     def GetMSBTeamModel(self) -> list:
-        return In_Game_Team_Names_List
+        return [''] + In_Game_Team_Names_List
     
     def GetMSBTeamName(self, roster, captain_index):
         return team_name(roster, roster[captain_index])
