@@ -481,27 +481,20 @@ class TSHScoreboardWidget(QWidget):
                 )
         )
 
-        self.runnerOn1CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1")
-        self.runnerOn2CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2")
-        self.runnerOn3CheckBox = self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2")
+        self.scoreColumn.findChild(QSpinBox, "outs").valueChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.outs", value)
+        )
 
-        self.runnerOn1CheckBox.stateChanged.connect(
-            lambda index: StateManager.Set(
-                f"score.{self.scoreboardNumber}.runnerOn1", self.runnerOn1CheckBox.isChecked()
-            )
-        ) 
-        
-        self.runnerOn2CheckBox.stateChanged.connect(
-            lambda index: StateManager.Set(
-                f"score.{self.scoreboardNumber}.runnerOn2", self.runnerOn2CheckBox.isChecked()
-            )
-        )   
-        
-        self.runnerOn3CheckBox.stateChanged.connect(
-            lambda index: StateManager.Set(
-                f"score.{self.scoreboardNumber}.runnerOn3", self.runnerOn3CheckBox.isChecked()
-            )
-        )     
+        self.scoreColumn.findChild(QSpinBox, "strikes").valueChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.strikes", value)
+        )
+
+        self.scoreColumn.findChild(QSpinBox, "balls").valueChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.balls", value)
+        )
 
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
             lambda: self.ExportTeamLogo(
@@ -1188,6 +1181,33 @@ class TSHScoreboardWidget(QWidget):
             if data.get("inning"):
                 inningContainers[1].setValue(data.get("inning"))
 
+            if data.get("outs"):
+                self.scoreColumn.findChild(QSpinBox, "outs").setValue(data.get("outs"))
+
+            if data.get("balls"):
+                self.scoreColumn.findChild(QSpinBox, "balls").setValue(data.get("balls"))
+
+            if data.get("strikes"):
+                self.scoreColumn.findChild(QSpinBox, "strikes").setValue(data.get("strikes"))
+
+            if data.get("batter"):
+                batter_combo = self.scoreColumn.findChild(QComboBox, "batter")
+                batter_combo.setCurrentText(data.get("batter"))
+                batter_combo.lineEdit().editingFinished.emit()
+
+            if data.get("pitcher"):
+                pitcher_combo = self.scoreColumn.findChild(QComboBox, "pitcher")
+                pitcher_combo.setCurrentText(data.get("pitcher"))
+                pitcher_combo.lineEdit().editingFinished.emit()
+            
+            for c in self.scoreColumn.findChildren(QCheckBox):
+                c.toggled.connect(
+                    lambda state, element=c: [
+                        StateManager.Set(
+                            f"score.{self.scoreboardNumber}.{element.objectName()}", state)
+                    ])
+                c.toggled.emit(False)
+
             runnerContainers = [
                 self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1"),
                 self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2"),
@@ -1199,7 +1219,7 @@ class TSHScoreboardWidget(QWidget):
                 if data.get(f'runnerOn{i+1}'):
                     runnerContainers[i].setChecked(True)
                 else:
-                    runnerContainers[i].setChecked(False)
+                    runnerContainers[i].setChecked(False)            
             
             if data.get("bestOf"):
                 self.scoreColumn.findChild(

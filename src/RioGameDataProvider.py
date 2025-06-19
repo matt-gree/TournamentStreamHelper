@@ -125,9 +125,23 @@ class RioGameDataProvider(QObject):
                 data["entrants"][i][0]['msb_team'] = self.GetMSBTeamName(data["entrants"][i][0]["roster"], data["entrants"][i][0]["captainIndex"])
 
                 print(f"[DEBUG] Parsed game data for team {team}: {data['entrants'][i][0]}")
+                
+                batter_index = game_json["batter"]
+                pitcher_index = game_json["pitcher"]
 
-            data['half_inning'] = 'Top' if game_json["half_inning"] == 0 else 'Bottom'
+            if game_json["half_inning"] == 0:
+                data['half_inning'] = 'Top'
+                data['batter'] = data["entrants"][1][0]["roster"][batter_index]
+                data['pitcher'] = data["entrants"][0][0]["roster"][pitcher_index]
+            else:
+                game_json["half_inning"] = 'Bottom'
+                data['batter'] = data["entrants"][0][0]["roster"][batter_index]
+                data['pitcher'] = data["entrants"][1][0]["roster"][pitcher_index]
+
             data['inning'] = game_json["inning"]
+            data['outs'] = game_json["outs"]
+            # data['strikes'] = game_json["strikes"]
+            # data['balls'] = game_json["balls"]
 
             data['runnerOn1'] = game_json["runner_on_first"]
             data['runnerOn2'] = game_json["runner_on_second"]

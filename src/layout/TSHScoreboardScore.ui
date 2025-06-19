@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>623</width>
-    <height>579</height>
+    <height>678</height>
    </rect>
   </property>
   <property name="font">
@@ -239,8 +239,132 @@
         </item>
        </layout>
       </item>
-      <item alignment="Qt::AlignmentFlag::AlignHCenter">
-       <widget class="QLabel" name="label_5">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="outs_label">
+            <property name="font">
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>OUTS</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="balls_label">
+            <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+            <property name="text">
+             <string>BALLS</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="strikes_label">
+            <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+            <property name="text">
+             <string>STRIKES</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QSpinBox" name="outs">
+            <property name="maximum">
+             <number>2</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="balls">
+            <property name="maximum">
+             <number>3</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="strikes">
+            <property name="maximum">
+             <number>2</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <widget class="QLabel" name="pitcher_label">
+            <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+            <property name="text">
+             <string>BATTER</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="batter_label">
+            <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+            <property name="text">
+             <string>PITCHER</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QComboBox" name="batter">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="pitcher">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
         <property name="font">
          <font>
           <pointsize>8</pointsize>
@@ -250,32 +374,35 @@
         <property name="text">
          <string>RUNNERS</string>
         </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
        </widget>
       </item>
-      <item alignment="Qt::AlignmentFlag::AlignHCenter">
-      <layout class="QHBoxLayout" name="horizontalLayout_runners">
       <item>
-      <widget class="QCheckBox" name="cbRioRunnerOn1">
-         <property name="text">
-         <string>1ST</string>
-         </property>
-      </widget>
-      </item>
-      <item>
-      <widget class="QCheckBox" name="cbRioRunnerOn2">
-         <property name="text">
-         <string>2ND</string>
-         </property>
-      </widget>
-      </item>
-      <item>
-      <widget class="QCheckBox" name="cbRioRunnerOn3">
-         <property name="text">
-         <string>3RD</string>
-         </property>
-      </widget>
-      </item>
-      </layout>
+       <layout class="QHBoxLayout" name="horizontalLayout_runners">
+        <item>
+         <widget class="QCheckBox" name="cbRioRunnerOn1">
+          <property name="text">
+           <string>1ST</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cbRioRunnerOn2">
+          <property name="text">
+           <string>2ND</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cbRioRunnerOn3">
+          <property name="text">
+           <string>3RD</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
        <widget class="QPushButton" name="btResetScore">
