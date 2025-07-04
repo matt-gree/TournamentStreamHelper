@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>623</width>
-    <height>678</height>
+    <height>819</height>
    </rect>
   </property>
   <property name="font">
@@ -244,13 +244,13 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <item>
-           <widget class="QLabel" name="outs_label">
+           <widget class="QLabel" name="strikes_label">
             <property name="font">
-             <font>
-              <pointsize>8</pointsize>
-              <bold>true</bold>
-             </font>
-            </property>
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
             <property name="text">
              <string>OUTS</string>
             </property>
@@ -270,7 +270,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="strikes_label">
+           <widget class="QLabel" name="outs_label">
             <property name="font">
               <font>
                <pointsize>8</pointsize>
@@ -316,7 +316,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_7">
           <item>
-           <widget class="QLabel" name="pitcher_label">
+           <widget class="QLabel" name="batter_label">
             <property name="font">
               <font>
                <pointsize>8</pointsize>
@@ -329,7 +329,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="batter_label">
+           <widget class="QLabel" name="pitcher_label">
             <property name="font">
               <font>
                <pointsize>8</pointsize>
@@ -436,7 +436,7 @@
         <property name="minimumSize">
          <size>
           <width>10</width>
-          <height>0</height>
+          <height>1</height>
          </size>
         </property>
         <property name="font">
@@ -462,6 +462,113 @@
         <property name="text">
          <string>SWAP RIO TEAM DATA</string>
         </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="rotatorLiveGameWidget" native="true">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_7">
+         <item>
+          <widget class="QLabel" name="label_10">
+           <property name="font">
+            <font>
+             <pointsize>8</pointsize>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>GAME MODE FILTER</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="liveGame">
+           <property name="font">
+            <font>
+             <pointsize>10</pointsize>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="editable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_10">
+           <item>
+            <widget class="QLabel" name="label_9">
+             <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>ROTATE (SEC)</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_8">
+             <property name="font">
+              <font>
+               <pointsize>8</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>SINCE START (MIN)</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <item>
+            <widget class="QSpinBox" name="rotatorLiveGameChangeFrequency">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+               <bold>false</bold>
+              </font>
+             </property>
+             <property name="maximum">
+              <number>600</number>
+             </property>
+             <property name="value">
+              <number>20</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="rotatorMinutesElapsed">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+               <bold>false</bold>
+              </font>
+             </property>
+             <property name="maximum">
+              <number>60</number>
+             </property>
+             <property name="value">
+              <number>30</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>

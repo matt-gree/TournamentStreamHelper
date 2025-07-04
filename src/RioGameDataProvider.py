@@ -75,7 +75,7 @@ class RioGameDataProvider(QObject):
             server_games = response.json().get("ongoing_games", [])
             recent_server_games = [
                 {**g, "source": "server"} for g in server_games
-                if int(g.get("start_time", 0)) > (time.time() - 60 * 40)
+                if int(g.get("start_time", 0)) > (time.time() - 60 * 30)
             ]
             games.extend(recent_server_games)
         except Exception as e:
@@ -87,6 +87,11 @@ class RioGameDataProvider(QObject):
             hud_game["source"] = "hud"
             games.append(hud_game)
 
+        # Append a special rotator entry as a dict
+        games.append({
+            "source": "rotator",
+            "display_name": "Rotator"
+        })
         return games
 
     def _on_live_games_fetched(self, all_games):
@@ -123,8 +128,6 @@ class RioGameDataProvider(QObject):
                 data["entrants"][i][0]["captainIndex"] = game_json[f"{team}_captain"]
                 data["entrants"][i][0]['rioName'] = game_json[f'{team}_player']
                 data["entrants"][i][0]['msb_team'] = self.GetMSBTeamName(data["entrants"][i][0]["roster"], data["entrants"][i][0]["captainIndex"])
-
-                print(f"[DEBUG] Parsed game data for team {team}: {data['entrants'][i][0]}")
                 
                 batter_index = game_json["batter"]
                 pitcher_index = game_json["pitcher"]
@@ -134,20 +137,18 @@ class RioGameDataProvider(QObject):
                 data['batter'] = data["entrants"][1][0]["roster"][batter_index]
                 data['pitcher'] = data["entrants"][0][0]["roster"][pitcher_index]
             else:
-                game_json["half_inning"] = 'Bottom'
+                data["half_inning"] = 'Bottom'
                 data['batter'] = data["entrants"][0][0]["roster"][batter_index]
                 data['pitcher'] = data["entrants"][1][0]["roster"][pitcher_index]
 
             data['inning'] = game_json["inning"]
             data['outs'] = game_json["outs"]
-            # data['strikes'] = game_json["strikes"]
-            # data['balls'] = game_json["balls"]
+            data['strikes'] = game_json.get("strikes", 0)
+            data['balls'] = game_json.get("balls", 0)
 
             data['runnerOn1'] = game_json["runner_on_first"]
             data['runnerOn2'] = game_json["runner_on_second"]
             data['runnerOn3'] = game_json["runner_on_third"]
-
-            print(game_json)
 
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to parse game data: {e}")
@@ -173,8 +174,6 @@ class RioHUDWatcher(QObject):
         super().__init__()
         self.hud_file = hud_file
 
-        print(f"[RioHUDWatcher] Initialized. Watching: {self.hud_file}")
-
         self.watcher = QFileSystemWatcher()
         self.latest_game_data = None
         self.watcher.addPath(str(self.hud_file))
@@ -199,17 +198,18 @@ class RioHUDWatcher(QObject):
             print(f"[RioHUDWatcher] Error reading HUD file: {e}")
         
     def convert_hud_data_format(self, hud_data: HudObj):
+    ##TODO FIX Captains index upon Project Rio Update
         game = {
             "away_captain": hud_data.captain_index(1),
-            "away_player": hud_data.player(1),
-            "away_score": hud_data.score(1),
-            "away_stars": hud_data.team_stars(1),
+            "away_player": hud_data.player(0),
+            "away_score": hud_data.score(0),
+            "away_stars": hud_data.team_stars(0),
             "batter": hud_data.batter_roster_location(),
             "half_inning": hud_data.half_inning(),
             "home_captain": hud_data.captain_index(0),
-            "home_player": hud_data.player(0),
-            "home_score": hud_data.score(0),
-            "home_stars": hud_data.team_stars(0),
+            "home_player": hud_data.player(1),
+            "home_score": hud_data.score(1),
+            "home_stars": hud_data.team_stars(1),
             "inning": hud_data.inning(),
             "outs": hud_data.outs(),
             "pitcher": hud_data.pitcher_roster_location(),
@@ -218,7 +218,9 @@ class RioHUDWatcher(QObject):
             "runner_on_third": hud_data.runner_on_third(),
             "stadium_id": -1,
             "start_time": -1,
-            "tag_set": -1
+            "tag_set": -1,
+            "balls": hud_data.balls(),
+            "strikes": hud_data.strikes()
         }
 
         def flatten_roster_dict(roster_dict: dict, team_name: str) -> dict:
@@ -230,8 +232,6 @@ class RioHUDWatcher(QObject):
         
         game.update(flatten_roster_dict(hud_data.roster(0), 'away'))
         game.update(flatten_roster_dict(hud_data.roster(1), 'home'))
-
-        print(game)
 
         return game
     

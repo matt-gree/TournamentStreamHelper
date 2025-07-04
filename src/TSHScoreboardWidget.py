@@ -170,18 +170,20 @@ class TSHScoreboardWidget(QWidget):
         col.setLayout(QVBoxLayout())
         topOptions.layout().addWidget(col)
         self.charNumber = QSpinBox()
-        col.layout().addWidget(QLabel(QApplication.translate("app", "Characters per player")))
+        # col.layout().addWidget(QLabel(QApplication.translate("app", "Characters per player")))
         col.layout().addWidget(self.charNumber)
         self.charNumber.valueChanged.connect(self.SetCharacterNumber)
+        self.charNumber.setVisible(False)
 
         col = QWidget()
         col.setLayout(QVBoxLayout())
         topOptions.layout().addWidget(col)
         topOptions.layout().addStretch()
         self.playerNumber = QSpinBox()
-        col.layout().addWidget(QLabel(QApplication.translate("app", "Players per team")))
+        # col.layout().addWidget(QLabel(QApplication.translate("app", "Players per team")))
         col.layout().addWidget(self.playerNumber)
         self.playerNumber.valueChanged.connect(self.SetPlayersPerTeam)
+        self.playerNumber.setVisible(False)
 
         # THUMBNAIL
         col = QWidget()
@@ -197,6 +199,7 @@ class TSHScoreboardWidget(QWidget):
         col.layout().addWidget(self.thumbnailBtn, Qt.AlignmentFlag.AlignRight)
         # self.thumbnailBtn.setPopupMode(QToolButton.InstantPopup)
         self.thumbnailBtn.clicked.connect(self.GenerateThumbnail)
+        self.thumbnailBtn.setVisible(False)
         
         self.bskyBtn = QPushButton(
             QApplication.translate("app", "Post to Bluesky") + " ")
@@ -204,6 +207,7 @@ class TSHScoreboardWidget(QWidget):
         self.bskyBtn.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
         col.layout().addWidget(self.bskyBtn, Qt.AlignmentFlag.AlignRight)
         self.bskyBtn.clicked.connect(self.PostToBsky)
+        self.bskyBtn.setVisible(False)
 
         # VISIBILITY
         col = QWidget()
@@ -220,6 +224,7 @@ class TSHScoreboardWidget(QWidget):
         self.eyeBt.setPopupMode(QToolButton.InstantPopup)
         menu = QMenu()
         self.eyeBt.setMenu(menu)
+        self.eyeBt.setVisible(False)
 
         menu.addSection("Players")
 
@@ -243,6 +248,8 @@ class TSHScoreboardWidget(QWidget):
             action.setChecked(True)
             action.toggled.connect(
                 lambda toggled, action=action, element=element: self.ToggleElements(action, element[1]))
+            
+        topOptions.setVisible(False)
 
         self.playerWidgets: List[TSHScoreboardPlayerWidget] = []
         self.team1playerWidgets: List[TSHScoreboardPlayerWidget] = []
@@ -467,12 +474,6 @@ class TSHScoreboardWidget(QWidget):
         self.halfInningComboBox = self.scoreColumn.findChild(QComboBox, "half_inning")
         self.halfInningComboBox.addItems(["Top", "Bottom"])
         
-        self.halfInningComboBox.currentIndexChanged.connect(
-            lambda index: StateManager.Set(
-                f"score.{self.scoreboardNumber}.half_inning", self.halfInningComboBox.currentText()
-            )
-        )   
-        
         self.inningSpinBox = self.scoreColumn.findChild(QSpinBox, "inning")
 
         self.inningSpinBox.valueChanged.connect(
@@ -517,8 +518,8 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(
             QPushButton, "btResetScore").setIcon(QIcon('assets/icons/undo.svg'))
         
-        # Load games on start
-        self.rio_updateLiveGameList()
+        # Load games on start after assets load
+        TSHGameAssetManager.instance.signals.onLoad.connect(self.rio_updateLiveGameList)
         
         self.scoreColumn.findChild(
             QPushButton, "btRioLoadLiveGames").clicked.connect(self.rio_updateLiveGameList)
@@ -824,6 +825,8 @@ class TSHScoreboardWidget(QWidget):
         finally:
             StateManager.Set(
                 f"score.{self.scoreboardNumber}.teamsSwapped", self.teamsSwapped)
+            
+            self.rio_savedLiveData['entrants'].reverse()
 
             for p in self.playerWidgets:
                 p.dataLock.release()
@@ -833,6 +836,16 @@ class TSHScoreboardWidget(QWidget):
     def ResetScore(self):
         self.scoreColumn.findChild(QSpinBox, "score_left").setValue(0)
         self.scoreColumn.findChild(QSpinBox, "score_right").setValue(0)
+        self.scoreColumn.findChild(QComboBox, "half_inning").setCurrentText('Top')
+        self.scoreColumn.findChild(QSpinBox, "inning").setValue(0)
+        self.scoreColumn.findChild(QSpinBox, "outs").setValue(0)
+        self.scoreColumn.findChild(QSpinBox, "strikes").setValue(0)
+        self.scoreColumn.findChild(QSpinBox, "balls").setValue(0)
+        self.scoreColumn.findChild(QComboBox, "pitcher").setCurrentText('')
+        self.scoreColumn.findChild(QComboBox, "batter").setCurrentText('')
+        self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1").setChecked(False)
+        self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2").setChecked(False)
+        self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn3").setChecked(False)
 
     def rio_updateLiveGameList(self):
         RioGameDataProvider.instance.FetchGames()
@@ -848,6 +861,8 @@ class TSHScoreboardWidget(QWidget):
                 label = f"[HUD] {label}"
             elif game.get("source") == "server":
                 label = f"[Online] {label}"
+            elif game.get("source") == "rotator":
+                label = f"Rotator"
 
             combo.addItem(label)
             self.rio_live_game_lookup[label] = game
@@ -860,15 +875,24 @@ class TSHScoreboardWidget(QWidget):
 
     def rio_setLiveGame(self, label):
         game = self.rio_live_game_lookup.get(label)
+
+        if label.lower() == "rotator":
+            self.scoreColumn.findChild(QWidget, "rotatorLiveGameWidget").setVisible(True)
+            return
+        else:
+            self.scoreColumn.findChild(QWidget, "rotatorLiveGameWidget").setVisible(False)
+
         if game:
             RioGameDataProvider.instance.SelectLiveGame(game)
 
     def load_rio_game(self, parsed_data):
         self.charNumber.setValue(9)
         self.rio_savedLiveData = parsed_data
-        self.ChangeSetData(parsed_data)
+        self.ChangeSetData(self.rio_savedLiveData)
 
-    def ApplyRioRosterNames(self, data):
+    def OnSwapRioDataClicked(self):
+        data = self.rio_savedLiveData
+
         StateManager.BlockSaving()
 
         # Lock all player widgets
@@ -876,6 +900,8 @@ class TSHScoreboardWidget(QWidget):
             p.dataLock.acquire()
 
         teamInstances = [self.team1playerWidgets, self.team2playerWidgets]
+
+        print(data)
 
         if not data.get("entrants"):
             return
@@ -914,9 +940,6 @@ class TSHScoreboardWidget(QWidget):
             p.dataLock.release()
 
         StateManager.ReleaseSaving()
-
-    def OnSwapRioDataClicked(self):
-        self.ApplyRioRosterNames(self.rio_savedLiveData)
         
     def AutoUpdate(self, data):
         TSHTournamentDataProvider.instance.GetMatch(
@@ -1127,7 +1150,6 @@ class TSHScoreboardWidget(QWidget):
     # Modifies the current set data. Does not check for id, so do not call this with data that may lead to another hbox incident
     def ChangeSetData(self, data):
         StateManager.BlockSaving()
-
         try:
             round_name = data.get("round_name")
             if round_name:
@@ -1166,9 +1188,10 @@ class TSHScoreboardWidget(QWidget):
                 scoreContainers[0].setValue(0)
                 scoreContainers[1].setValue(0)
 
-            if data.get("team1score"):
+            # In case score is 0
+            if "team1score" in data:
                 scoreContainers[0].setValue(data.get("team1score"))
-            if data.get("team2score"):
+            if "team2score" in data:
                 scoreContainers[1].setValue(data.get("team2score"))
 
             inningContainers = [
@@ -1176,18 +1199,19 @@ class TSHScoreboardWidget(QWidget):
                 self.scoreColumn.findChild(QSpinBox, "inning")
             ]
 
-            if data.get("half_inning"):
+            if "half_inning" in data:
                 inningContainers[0].setCurrentText(data.get("half_inning"))
+
             if data.get("inning"):
                 inningContainers[1].setValue(data.get("inning"))
 
-            if data.get("outs"):
+            if "outs" in data:
                 self.scoreColumn.findChild(QSpinBox, "outs").setValue(data.get("outs"))
 
-            if data.get("balls"):
+            if "balls" in data:
                 self.scoreColumn.findChild(QSpinBox, "balls").setValue(data.get("balls"))
 
-            if data.get("strikes"):
+            if "strikes" in data:
                 self.scoreColumn.findChild(QSpinBox, "strikes").setValue(data.get("strikes"))
 
             if data.get("batter"):
@@ -1215,11 +1239,8 @@ class TSHScoreboardWidget(QWidget):
             ]
 
             for i in range(3):
-                print(data.get(f'runnerOn{i+1}'))
-                if data.get(f'runnerOn{i+1}'):
-                    runnerContainers[i].setChecked(True)
-                else:
-                    runnerContainers[i].setChecked(False)            
+                if f'runnerOn{i+1}' in data:
+                    runnerContainers[i].setChecked(data.get(f'runnerOn{i+1}'))           
             
             if data.get("bestOf"):
                 self.scoreColumn.findChild(
@@ -1251,9 +1272,16 @@ class TSHScoreboardWidget(QWidget):
 
                 try:
                     for t, team in enumerate(data.get("entrants")):
+
                         teamInstances = [self.team1playerWidgets,
-                                         self.team2playerWidgets]
-                        
+                                    self.team2playerWidgets]
+                    
+                        if self.teamsSwapped:
+                            teamInstances.reverse()
+                            team = data.get("entrants")[::-1][t]
+
+                        teamInstance = teamInstances[t]
+
                         #rosters are on their own swap toggle from the player data.
                         # TODO Clean this code up
                         teamInstance_rosters = teamInstances[t]
@@ -1261,10 +1289,6 @@ class TSHScoreboardWidget(QWidget):
                         rio_name = team[0].get("rioName")
                         rio_name_target.setText(rio_name)
                         rio_name_target.editingFinished.emit()
-
-                        if self.teamsSwapped:
-                            teamInstances.reverse()
-                        teamInstance = teamInstances[t]
 
                         if len(team) > 1:
                             teamColumns = [self.team1column, self.team2column]
@@ -1291,8 +1315,7 @@ class TSHScoreboardWidget(QWidget):
                             if hasattr(teamInstance_rosters[p], "character_elements"):
                                 radio_button = teamInstance_rosters[p].character_elements[captain_index][4]
                                 radio_button.setChecked(True)
-                            
-                            print(player.get("roster"))
+
                             if player.get("roster"):
                                 for c, character in enumerate(player.get("roster")):
                                     characterBox = teamInstance_rosters[p].findChild(QComboBox, f"character_{c+1}")
@@ -1402,6 +1425,5 @@ class TSHScoreboardWidget(QWidget):
             players, characters = StateManager.Get(f'game.defaults.players_per_team', 1), StateManager.Get(f'game.defaults.characters_per_player', 1)
         else:
             players, characters = 1, 1
-        print(players, "players", characters, "characters")
         self.playerNumber.setValue(players)
         self.charNumber.setValue(9) # RIO: hard code to 9

@@ -443,12 +443,16 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             view.setIconSize(QSize(24, 24))
             player_variant.setView(view)
 
+            # Hide it to remove, but doesn't break any logic
+            player_variant.setVisible(False)
+
             # Captain selection radio button
             captain_radio = QRadioButton()
             captain_radio.setToolTip("Select as Captain")
             self.captain_radio_group.addButton(captain_radio)
             character_element.layout().addWidget(captain_radio)
             captain_radio.toggled.connect(self.UpdateCaptainIndex)
+            captain_radio.setMaximumWidth(40)
 
             # Move up/down buttons
             btMoveUp = QPushButton()
