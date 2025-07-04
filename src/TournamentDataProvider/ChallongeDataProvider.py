@@ -121,6 +121,7 @@ class ChallongeDataProvider(TournamentDataProvider):
             if videogame:
                 self.videogame = videogame
                 self.parent.signals.game_changed.emit(videogame)
+                finalData['videogame'] = videogame
 
             finalData["tournamentName"] = deep_get(collection, "name")
 

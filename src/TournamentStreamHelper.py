@@ -124,7 +124,6 @@ from .TSHThumbnailSettingsWidget import TSHThumbnailSettingsWidget
 from src.TSHAssetDownloader import TSHAssetDownloader
 from src.TSHAboutWidget import TSHAboutWidget
 from .TSHScoreboardStageWidget import TSHScoreboardStageWidget
-from .TSHProjectRioWidget import TSHProjectRioWidget
 from src.TSHWebServer import WebServer
 # autopep8: on
 
@@ -382,14 +381,6 @@ class Window(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, notes)
         self.dockWidgets.append(notes)
 
-        otherScores = TSHProjectRioWidget()
-        otherScores.setWindowIcon(QIcon('assets/icons/info.svg'))
-        otherScores.setObjectName(
-            QApplication.translate("app", "Other Scores Test"))
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea, otherScores)
-        self.dockWidgets.append(otherScores)
-
         self.tabifyDockWidget(self.scoreboard, self.stageWidget)
         self.tabifyDockWidget(self.scoreboard, commentary)
         self.tabifyDockWidget(self.scoreboard, tournamentInfo)
@@ -397,7 +388,6 @@ class Window(QMainWindow):
         self.tabifyDockWidget(self.scoreboard, playerList)
         self.tabifyDockWidget(self.scoreboard, bracket)
         self.tabifyDockWidget(self.scoreboard, notes)
-        self.tabifyDockWidget(self.scoreboard, otherScores)
         self.scoreboard.raise_()
 
         # Game
@@ -687,6 +677,11 @@ class Window(QMainWindow):
         self.gameSelect.setFont(self.font_small)
         self.gameSelect.activated.connect(
             lambda x: TSHGameAssetManager.instance.LoadGameAssets(self.gameSelect.currentData()))
+
+        # Force Mario Superstar Baseball as the default selection and load it immediately
+        default_game_name = "Mario Superstar Baseball"
+        self.gameSelect.setCurrentText(default_game_name)
+
         TSHGameAssetManager.instance.signals.onLoad.connect(
             self.SetGame)
         TSHGameAssetManager.instance.signals.onLoadAssets.connect(
