@@ -862,7 +862,12 @@ class TSHScoreboardWidget(QWidget):
             elif game.get("source") == "server":
                 label = f"[Online] {label}"
             elif game.get("source") == "rotator":
-                label = f"Rotator"
+                label = f"[Rotator]"
+
+            i = 1
+            while label in self.rio_live_game_lookup:
+                label + f' {i}'
+                i += 1
 
             combo.addItem(label)
             self.rio_live_game_lookup[label] = game

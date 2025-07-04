@@ -68,6 +68,12 @@ class RioGameDataProvider(QObject):
     def _fetch_all_games(self, progress_callback=None, cancel_event=None):
         games = []
 
+        # Fetch HUD game from cached watcher state
+        hud_game = self.hud_watcher.latest_game_data
+        if hud_game:
+            hud_game["source"] = "hud"
+            games.append(hud_game)
+
         # Fetch server games
         try:
             response = requests.get(self.API_URL)
@@ -81,17 +87,11 @@ class RioGameDataProvider(QObject):
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to fetch server games: {e}")
 
-        # Fetch HUD game from cached watcher state
-        hud_game = self.hud_watcher.latest_game_data
-        if hud_game:
-            hud_game["source"] = "hud"
-            games.append(hud_game)
-
         # Append a special rotator entry as a dict
-        games.append({
-            "source": "rotator",
-            "display_name": "Rotator"
-        })
+        # games.append({
+        #     "source": "rotator",
+        #     "display_name": "Rotator"
+        # })
         return games
 
     def _on_live_games_fetched(self, all_games):
