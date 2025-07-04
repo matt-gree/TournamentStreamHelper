@@ -1188,10 +1188,10 @@ class TSHScoreboardWidget(QWidget):
                 scoreContainers[0].setValue(0)
                 scoreContainers[1].setValue(0)
 
-            # In case score is 0
-            if "team1score" in data:
+            
+            if data.get('team1score'):
                 scoreContainers[0].setValue(data.get("team1score"))
-            if "team2score" in data:
+            if data.get('team2score'):
                 scoreContainers[1].setValue(data.get("team2score"))
 
             inningContainers = [
@@ -1199,6 +1199,7 @@ class TSHScoreboardWidget(QWidget):
                 self.scoreColumn.findChild(QSpinBox, "inning")
             ]
 
+            # In case data is 0
             if "half_inning" in data:
                 inningContainers[0].setCurrentText(data.get("half_inning"))
 
