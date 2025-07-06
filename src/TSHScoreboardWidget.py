@@ -28,7 +28,7 @@ from src.RioGameDataProvider import RioGameDataProvider
 import json
 import time
 from pathlib import Path
-from pyRio.lookup import LookupDicts as rioLU 
+from pyrio.lookup import LookupDicts as rioLU 
 
 
 empty = {}

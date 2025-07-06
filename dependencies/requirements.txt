@@ -22,4 +22,4 @@ orjson==3.10.13
 msgpack==1.1.0
 qasync==0.27.1
 tzdata
-git+https://github.com/matt-gree/pyRio.git@main#egg=pyrio
+git+https://github.com/matt-gree/pyrio.git@main#egg=pyrio

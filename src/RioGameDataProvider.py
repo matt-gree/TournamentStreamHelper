@@ -8,13 +8,13 @@ import os
 from pathlib import Path
 from qtpy.QtCore import QThreadPool
 from qtpy.QtCore import QObject, Signal
-from pyRio.lookup import LookupDicts, Lookup
+from pyrio.lookup import LookupDicts, Lookup
 from .Workers import Worker
 from qtpy.QtCore import QFileSystemWatcher, QTimer, Qt
 from qtpy.QtGui import QStandardItemModel, QStandardItem
 
-from pyRio.stat_file_parser import HudObj
-from pyRio.team_name_algo import In_Game_Team_Names_List, team_name
+from pyrio.stat_file_parser import HudObj
+from pyrio.team_name_algo import In_Game_Team_Names_List, team_name
 
 def get_hud_file_path() -> Path:
     """
