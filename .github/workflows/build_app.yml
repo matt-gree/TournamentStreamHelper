@@ -37,6 +37,9 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r .\dependencies\requirements.txt pyinstaller
 
+      - name: Install pyrio from submodule
+        run: pip install ./pyrio
+
       - name: Generate locale files
         run: |
           pyside6-lrelease -version
