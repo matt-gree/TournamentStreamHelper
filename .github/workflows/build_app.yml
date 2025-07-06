@@ -52,16 +52,8 @@ jobs:
           pyinstaller --noconfirm .\dependencies\tsh.spec
           copy dist\TSH.exe TSH.exe
 
-      - name: Commit files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add TSH.exe .\src\i18n\*.ts
-          git add TSH.exe .\src\i18n\*.qm
-          git commit -m "Update exe and locale files" -a
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - name: Upload executable as artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.extract_branch.outputs.branch }}
+          name: TSH-Windows-Executable
+          path: TSH.exe
