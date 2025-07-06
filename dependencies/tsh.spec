@@ -19,7 +19,8 @@ a = Analysis(
         ('../src/i18n/*.qm', 'src/i18n'),
         ('../src/layout/*', 'src/layout'),
 #       ('../stage_strike_app/build/*', 'stage_strike_app/build'),
-        ('../src/TournamentDataProvider/*.txt', 'src/TournamentDataProvider')
+        ('../src/TournamentDataProvider/*.txt', 'src/TournamentDataProvider'),
+        ('../pyrio/CharNames.csv', 'pyrio'),
     ],
     hookspath=[],
     runtime_hooks=[],
