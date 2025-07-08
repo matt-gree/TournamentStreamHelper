@@ -2,6 +2,7 @@ from qtpy.QtWidgets import *
 from ..TSHHotkeys import TSHHotkeys
 from ..SettingsManager import SettingsManager
 import textwrap
+from pathlib import Path
 
 
 class SettingsWidget(QWidget):
@@ -21,6 +22,8 @@ class SettingsWidget(QWidget):
             self.AddSetting(*setting)
 
     def AddSetting(self, name: str, setting: str, type: str, defaultValue, callback=lambda: None, tooltip=None):
+        callback = callback or (lambda: None)
+        
         lastRow = self.layout().rowCount()
 
         self.layout().addWidget(QLabel(name), lastRow, 0)
@@ -74,6 +77,39 @@ class SettingsWidget(QWidget):
                     callback()
                 ]
             )
+
+        elif type == "filedialog":
+            layout = QHBoxLayout()
+            settingWidget = QLineEdit()
+            settingWidget.setText(SettingsManager.Get(
+                self.settingsBase + "." + setting, defaultValue))
+
+            browseButton = QPushButton("Browse")
+            def openFileDialog():
+                file_path, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "Select File",
+                    str(defaultValue) if defaultValue else str(Path.home()),
+                    "JSON Files (*.json);;All Files (*)"
+                )
+                if file_path:
+                    settingWidget.setText(file_path)
+                    SettingsManager.Set(self.settingsBase + "." + setting, file_path)
+
+            browseButton.clicked.connect(openFileDialog)
+            layout.addWidget(settingWidget)
+            layout.addWidget(browseButton)
+
+            resetButton.clicked.connect(
+                lambda bt=None, settingWidget=settingWidget: [
+                    settingWidget.setText(defaultValue),
+                    callback()
+                ]
+            )
+
+            self.layout().addLayout(layout, lastRow, 1)
+            self.layout().addWidget(resetButton, lastRow, 2)
+            return
         
         if tooltip:
             settingWidget.setToolTip('\n'.join(textwrap.wrap(tooltip, 40)))

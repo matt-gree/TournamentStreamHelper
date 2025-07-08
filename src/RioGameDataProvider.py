@@ -12,11 +12,12 @@ from pyrio.lookup import LookupDicts, Lookup
 from .Workers import Worker
 from qtpy.QtCore import QFileSystemWatcher, QTimer, Qt
 from qtpy.QtGui import QStandardItemModel, QStandardItem
+from .SettingsManager import SettingsManager
 
 from pyrio.stat_file_parser import HudObj
 from pyrio.team_name_algo import In_Game_Team_Names_List, team_name
 
-def get_hud_file_path() -> Path:
+def get_default_hud_file_path() -> Path:
     """
     Returns the OS-specific path to Project Rio's decoded.hud.json file.
     """
@@ -31,8 +32,15 @@ def get_hud_file_path() -> Path:
         return home / "Documents" / "Project Rio" / "HudFiles" / "decoded.hud.json"
 
     else:
-        print("[RioHUDWatcher] Unsupported OS")
         return Path("/invalid/path")
+    
+def get_user_hud_path() -> Path | None:
+    user_path = SettingsManager.Get("project_rio.hud_path", "")
+    if user_path:
+        path = Path(user_path)
+        if path.exists() and path.is_file() and path.suffix == ".json":
+            return path
+    return None
 
 class RioGameDataProvider(QObject):
     instance = None
@@ -46,14 +54,30 @@ class RioGameDataProvider(QObject):
             raise Exception("RioGameDataProvider is a singleton! Use RioGameDataProvider.instance")
         RioGameDataProvider.instance = self
         self.API_URL = "https://api.projectrio.app/populate_db/ongoing_game/"
-        self.hud_file = get_hud_file_path()
+        self.hud_file = get_user_hud_path()
         self.live_games = []
         self.current_game = None
         self.threadPool = QThreadPool()
         
-        self.hud_watcher = RioHUDWatcher(self.hud_file)
-        self.hud_watcher._reload_game_data()
-        self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
+        if self.hud_file:
+            self.hud_watcher = RioHUDWatcher(self.hud_file)
+            self.hud_watcher._reload_game_data()
+            self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
+        else:
+            print(f"[RioGameDataProvider] HUD file not found at {self.hud_file}")
+
+    def reload_hud_path(self):
+        new_path = get_user_hud_path()
+        if not new_path:
+            return
+        
+        self.hud_file = new_path
+        if hasattr(self, "hud_watcher") and self.hud_watcher:
+            self.hud_watcher.update_hud_file(self.hud_file)
+        else:
+            self.hud_watcher = RioHUDWatcher(self.hud_file)
+            self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
+            self.hud_watcher._reload_game_data()
 
     def FetchGames(self):
         """
@@ -68,11 +92,14 @@ class RioGameDataProvider(QObject):
     def _fetch_all_games(self, progress_callback=None, cancel_event=None):
         games = []
 
-        # Fetch HUD game from cached watcher state
-        hud_game = self.hud_watcher.latest_game_data
-        if hud_game:
-            hud_game["source"] = "hud"
-            games.append(hud_game)
+        self.reload_hud_path()
+
+        if hasattr(self, "hud_watcher"):
+            # Fetch HUD game from cached watcher state
+            hud_game = self.hud_watcher.latest_game_data
+            if hud_game:
+                hud_game["source"] = "hud"
+                games.append(hud_game)
 
         # Fetch server games
         try:
@@ -196,6 +223,13 @@ class RioHUDWatcher(QObject):
                 self.hud_game_updated.emit(game)
         except Exception as e:
             print(f"[RioHUDWatcher] Error reading HUD file: {e}")
+
+    def update_hud_file(self, new_hud_file: Path):
+        # Remove old path from watcher
+        self.watcher.removePath(str(self.hud_file))
+        self.hud_file = new_hud_file
+        self.watcher.addPath(str(self.hud_file))
+        self._reload_game_data()
         
     def convert_hud_data_format(self, hud_data: HudObj):
     ##TODO FIX Captains index upon Project Rio Update

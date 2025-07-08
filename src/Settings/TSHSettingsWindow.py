@@ -3,6 +3,7 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from .SettingsWidget import SettingsWidget
 from ..TSHHotkeys import TSHHotkeys
+from ..RioGameDataProvider import get_default_hud_file_path
 
 
 class TSHSettingsWindow(QDialog):
@@ -216,6 +217,28 @@ class TSHSettingsWindow(QDialog):
         
         self.add_setting_widget(QApplication.translate(
             "settings", "Bluesky"), SettingsWidget("bsky_account", bskySettings))
+        
+        # Add Project Rio Settings
+
+        default_hud_path = get_default_hud_file_path()
+        if not default_hud_path.exists():
+            default_hud_path = ""
+
+        rioSettings = []
+
+        rioSettings.append((
+            QApplication.translate("settings.rio", "Select Project Rio HUD File"),
+            "hud_path",
+            "filedialog",
+            str(default_hud_path),
+            None,
+            QApplication.translate(
+                "settings.rio", "Browse to select the Project Rio HUD file.")
+        ))
+
+        self.add_setting_widget(QApplication.translate(
+            "settings", "Project Rio"), SettingsWidget("project_rio", rioSettings))
+
 
         self.resize(1000, 500)
         QApplication.processEvents()
