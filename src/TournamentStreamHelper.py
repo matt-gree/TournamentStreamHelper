@@ -146,7 +146,7 @@ def DownloadLayoutsOnBoot():
     if not has_layouts:
         logger.info("Layouts were not detected, downloading from Github...")
         try:
-            url = "https://github.com/TournamentStreamHelper/TournamentStreamHelper-layouts/archive/refs/heads/main.zip"
+            url = "https://github.com/matt-gree/TournamentStreamHelper-layouts/archive/refs/heads/main.zip"
             r = requests.get(url, allow_redirects=True)
             zip_path = './layout/layout.zip.tmp'
             with open(zip_path, 'wb') as zip_file:
