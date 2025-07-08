@@ -1,15 +1,7 @@
 name: Build the application
 
 on:
-  push:
-    branches:
-      - main
-      - locale/*
-      - feature/*
-      - fix/*
-    paths-ignore:
-      - 'layout/**'
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   build:
