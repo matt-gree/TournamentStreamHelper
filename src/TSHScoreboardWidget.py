@@ -1202,9 +1202,9 @@ class TSHScoreboardWidget(QWidget):
                 scoreContainers[1].setValue(0)
 
             
-            if data.get('team1score'):
+            if 'team1score' in data:
                 scoreContainers[0].setValue(data.get("team1score"))
-            if data.get('team2score'):
+            if 'team2score' in data:
                 scoreContainers[1].setValue(data.get("team2score"))
 
             inningContainers = [

@@ -141,6 +141,8 @@ class RioGameDataProvider(QObject):
         """
         data = {"entrants": [[{}], [{}]]}
 
+        print(game_json)
+
         try:
             data["team1score"] = game_json["home_score"]
             data["team2score"] = game_json["away_score"]
@@ -179,6 +181,8 @@ class RioGameDataProvider(QObject):
 
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to parse game data: {e}")
+
+        print(data)
 
         return data
     
