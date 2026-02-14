@@ -352,6 +352,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                                 data[widget.objectName()] = widget.text()
                             if type(widget) == QComboBox:
                                 data[widget.objectName()] = widget.currentIndex()
+                            if type(widget) == QPlainTextEdit:
+                                data[widget.objectName()] = widget.toPlainText()
                         data["online_avatar"] = StateManager.Get(
                             f"{w.path}.online_avatar")
                         data["id"] = StateManager.Get(
@@ -372,6 +374,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                                     widget.editingFinished.emit()
                                 if type(widget) == QComboBox:
                                     widget.setCurrentIndex(tmpData[i][objName])
+                                if type(widget) == QPlainTextEdit:
+                                    widget.setPlainText(tmpData[i][objName])
                         w.ExportPlayerImages(tmpData[i]["online_avatar"])
                         w.ExportPlayerId(tmpData[i]["id"])
                         StateManager.Set(f"{w.path}.seed", tmpData[i]["seed"])

@@ -111,6 +111,19 @@ class SettingsWidget(QWidget):
             self.layout().addWidget(resetButton, lastRow, 2)
             return
         
+        elif type == "button":
+            settingWidget = QPushButton(name)
+            # When clicked, call the callback function provided
+            settingWidget.clicked.connect(callback)
+            # No reset button for a simple button
+            resetButton.hide()
+
+            # Add button to layout (spanning columns if you want)
+            self.layout().addWidget(settingWidget, lastRow, 1)
+            self.layout().addWidget(resetButton, lastRow, 2)
+            return  # Exit early since we added the button
+
+        
         if tooltip:
             settingWidget.setToolTip('\n'.join(textwrap.wrap(tooltip, 40)))
 

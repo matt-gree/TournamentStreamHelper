@@ -159,6 +159,29 @@
         </item>
        </layout>
       </item>
+      <item>
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>GAME MODE</string>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>8</pointsize>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="game_mode">
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
       <item alignment="Qt::AlignmentFlag::AlignHCenter">
        <widget class="QLabel" name="label_4">
         <property name="font">
@@ -246,11 +269,11 @@
           <item>
            <widget class="QLabel" name="strikes_label">
             <property name="font">
-              <font>
-               <pointsize>8</pointsize>
-               <bold>true</bold>
-              </font>
-             </property>
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>OUTS</string>
             </property>
@@ -259,11 +282,11 @@
           <item>
            <widget class="QLabel" name="balls_label">
             <property name="font">
-              <font>
-               <pointsize>8</pointsize>
-               <bold>true</bold>
-              </font>
-             </property>
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>BALLS</string>
             </property>
@@ -272,11 +295,11 @@
           <item>
            <widget class="QLabel" name="outs_label">
             <property name="font">
-              <font>
-               <pointsize>8</pointsize>
-               <bold>true</bold>
-              </font>
-             </property>
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>STRIKES</string>
             </property>
@@ -318,11 +341,11 @@
           <item>
            <widget class="QLabel" name="batter_label">
             <property name="font">
-              <font>
-               <pointsize>8</pointsize>
-               <bold>true</bold>
-              </font>
-             </property>
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>BATTER</string>
             </property>
@@ -331,11 +354,11 @@
           <item>
            <widget class="QLabel" name="pitcher_label">
             <property name="font">
-              <font>
-               <pointsize>8</pointsize>
-               <bold>true</bold>
-              </font>
-             </property>
+             <font>
+              <pointsize>8</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>PITCHER</string>
             </property>

@@ -842,6 +842,8 @@ class Window(QMainWindow):
         self._layoutDownloader = LayoutDownloaderThread(self)
         self._layoutDownloader.start()
 
+        QTimer.singleShot(0, self.SetDefaultGame)
+
     def SetGame(self):
         index = next((i for i in range(self.gameSelect.model().rowCount()) if self.gameSelect.itemText(i) == TSHGameAssetManager.instance.selectedGame.get(
             "name") or self.gameSelect.itemText(i) == TSHGameAssetManager.instance.selectedGame.get("codename")), None)
@@ -864,6 +866,14 @@ class Window(QMainWindow):
         if url == "":
             self.gameSelect.setCurrentIndex(0)
             TSHGameAssetManager.instance.selectedGame = {}
+
+    def SetDefaultGame(self):
+        for i in range(self.gameSelect.count()):
+            if "mario superstar baseball" in self.gameSelect.itemText(i).lower():
+                self.gameSelect.setCurrentIndex(i)
+                # Also load it if needed
+                self.gameSelect.activated.emit(i)
+                break
 
     def UpdateUserSetButton(self):
         if SettingsManager.Get("StartGG_user"):
