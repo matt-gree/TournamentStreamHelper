@@ -13,7 +13,10 @@ from .Workers import Worker
 from qtpy.QtCore import QFileSystemWatcher, QTimer, Qt
 from qtpy.QtGui import QStandardItemModel, QStandardItem
 from .SettingsManager import SettingsManager
+from loguru import logger
 
+from pyrio.api_manager import APIManager
+from pyrio.web_functions import stats_endpoint, list_game_modes, live_games_endpoint
 from pyrio.stat_file_parser import HudObj
 from pyrio.team_name_algo import In_Game_Team_Names_List, team_name
 
@@ -45,7 +48,7 @@ def get_user_hud_path() -> Path | None:
 class RioGameDataProvider(QObject):
     instance = None
 
-    live_games_updated = Signal(list)
+    live_games_updated = Signal(dict)
     live_game_selected = Signal(dict)
 
     def __init__(self):
@@ -53,11 +56,13 @@ class RioGameDataProvider(QObject):
         if RioGameDataProvider.instance is not None:
             raise Exception("RioGameDataProvider is a singleton! Use RioGameDataProvider.instance")
         RioGameDataProvider.instance = self
-        self.API_URL = "https://api.projectrio.app/populate_db/ongoing_game/"
+        self.rio_api_manager = APIManager()
         self.hud_file = get_user_hud_path()
         self.live_games = []
         self.current_game = None
         self.threadPool = QThreadPool()
+        self.away_server_stats = {}
+        self.home_server_stats = {}
         
         if self.hud_file:
             self.hud_watcher = RioHUDWatcher(self.hud_file)
@@ -81,7 +86,7 @@ class RioGameDataProvider(QObject):
 
     def FetchGames(self):
         """
-        Fetches both server and HUD games. Emits a single combined list.
+        Fetches both server and HUD games. Emits a single dict.
         """
         worker = Worker(self._fetch_all_games)
         worker.signals.result.connect(self._on_live_games_fetched)
@@ -90,7 +95,7 @@ class RioGameDataProvider(QObject):
         self.threadPool.start(worker)
 
     def _fetch_all_games(self, progress_callback=None, cancel_event=None):
-        games = []
+        games = {}
 
         self.reload_hud_path()
 
@@ -98,19 +103,16 @@ class RioGameDataProvider(QObject):
             # Fetch HUD game from cached watcher state
             hud_game = self.hud_watcher.latest_game_data
             if hud_game:
-                hud_game["source"] = "hud"
-                games.append(hud_game)
+                games['HUD'] = hud_game
 
         # Fetch server games
         try:
-            response = requests.get(self.API_URL)
-            response.raise_for_status()
-            server_games = response.json().get("ongoing_games", [])
+            server_games = live_games_endpoint(self.rio_api_manager).get('ongoing_games', [])
             recent_server_games = [
-                {**g, "source": "server"} for g in server_games
+                g for g in server_games
                 if int(g.get("start_time", 0)) > (time.time() - 60 * 30)
             ]
-            games.extend(recent_server_games)
+            games['server_live'] = recent_server_games
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to fetch server games: {e}")
 
@@ -120,11 +122,97 @@ class RioGameDataProvider(QObject):
         #     "display_name": "Rotator"
         # })
         return games
-
+    
     def _on_live_games_fetched(self, all_games):
-        print(f"[DEBUG] Total fetched games: {len(all_games)}")
         self.live_games = all_games
         self.live_games_updated.emit(all_games)
+    
+    def FetchGameModes(self):
+        game_modes_worker = Worker(self._fetch_game_modes)
+        game_modes_worker.signals.result.connect(self._on_game_modes_fetched)
+        self.threadPool.start(game_modes_worker)
+
+    def _fetch_game_modes(self, progress_callback=None, cancel_event=None):
+        game_modes = list_game_modes(self.rio_api_manager, active=True)['Tag Sets']
+        game_modes_dict = {-1: 'Select Game Mode'}
+        for game_mode in game_modes:
+            game_modes_dict[game_mode["id"]] = game_mode["name"]
+        
+        return game_modes_dict
+
+    def _on_game_modes_fetched(self, modes):
+        if not modes:
+            return
+        try:
+            SettingsManager.Set("project_rio.game_modes", modes)
+            self.game_modes_updated.emit(modes)
+        except Exception as e:
+            logger.error(f"Error saving game modes to settings: {e}")
+        
+        print('Game Modes Finished')
+
+    def FetchGameModeStats(self, away_player, home_player, game_mode):
+        print('Fetching Game Mode Stats')
+        print(game_mode, away_player, home_player)
+        if game_mode in [None, 'Select Game Mode', 'Refresh Game Modes in Settings']:
+            return
+        print('Working')
+        game_mode_stats_worker = Worker(
+            lambda progress_callback=None, cancel_event=None: self._fetch_game_mode_stats(
+                game_mode, away_player, home_player
+            )
+        )
+        self.threadPool.start(game_mode_stats_worker)
+
+    def _fetch_game_mode_stats(self, game_mode, away_player, home_player, progress_callback=None, cancel_event=None):
+        params = {
+            'by_char': 1,
+            'username': [away_player, home_player],
+            'exclude_fielding': 1,
+            'tag': game_mode,
+            'by_user': 1
+        }
+        stats = stats_endpoint(self.rio_api_manager, params).get('Stats', {})
+        
+        self.away_server_stats = stats.get(away_player, {})
+        self.home_server_stats = stats.get(home_player, {})
+
+    def _process_batter_stats_dict(self, batter, batting_team_dict):
+        print(batter)
+        batter_stats_dict = batting_team_dict.get(batter, {}).get('Batting', {})
+        print(batter_stats_dict)
+        if batter_stats_dict:
+            at_bats = batter_stats_dict.get('summary_at_bats', 0)
+            hits = batter_stats_dict.get('summary_hits', 0)
+            singles = batter_stats_dict.get('summary_singles', 0)
+            doubles = batter_stats_dict.get('summary_doubles', 0)
+            triples = batter_stats_dict.get('summary_triples', 0)
+            homeruns = batter_stats_dict.get('summary_homeruns', 0)
+            strikeouts = batter_stats_dict.get('summary_strikeouts', 0)
+
+            if at_bats == 0:
+                avg = 0
+                slg = 0
+                so_percent = 0
+            else:
+                avg = hits / at_bats
+                slg = (singles + 2*doubles + 3*triples +4*homeruns)/at_bats
+                so_percent = strikeouts / at_bats * 100
+
+            batting_string = f'{batter}  ({at_bats} ABs)\nAVG: {avg:.3f}  SLG: {slg:.3f}  SO%: {so_percent:.0f}%'
+            return batting_string
+    
+    def create_stats_text(self, half_inning, batter, pitcher):
+        print("Creating stats text")
+        if half_inning == 0:
+            away_stat_string = self._process_batter_stats_dict(batter, self.away_server_stats)
+            home_stat_string = ''
+        else:
+            away_stat_string = ''
+            home_stat_string = self._process_batter_stats_dict(batter, self.home_server_stats)
+        
+        return (away_stat_string, home_stat_string)
+
 
     def SelectLiveGame(self, game_dict):
         """
@@ -144,11 +232,11 @@ class RioGameDataProvider(QObject):
         print(game_json)
 
         try:
+            data["team0score"] = game_json["away_score"]
             data["team1score"] = game_json["home_score"]
-            data["team2score"] = game_json["away_score"]
 
             for i in range(2):
-                team = "home" if i == 0 else "away"
+                team = "home" if i == 1 else "away"
                 roster = [
                     Lookup().lookup(LookupDicts.CHAR_NAME, game_json[f"{team}_roster_{j}_char"])
                     for j in range(9)
@@ -163,12 +251,12 @@ class RioGameDataProvider(QObject):
 
             if game_json["half_inning"] == 0:
                 data['half_inning'] = 'Top'
-                data['batter'] = data["entrants"][1][0]["roster"][batter_index]
-                data['pitcher'] = data["entrants"][0][0]["roster"][pitcher_index]
-            else:
-                data["half_inning"] = 'Bottom'
                 data['batter'] = data["entrants"][0][0]["roster"][batter_index]
                 data['pitcher'] = data["entrants"][1][0]["roster"][pitcher_index]
+            else:
+                data["half_inning"] = 'Bottom'
+                data['batter'] = data["entrants"][1][0]["roster"][batter_index]
+                data['pitcher'] = data["entrants"][0][0]["roster"][pitcher_index]
 
             data['inning'] = game_json["inning"]
             data['outs'] = game_json["outs"]
@@ -179,6 +267,8 @@ class RioGameDataProvider(QObject):
             data['runnerOn2'] = game_json["runner_on_second"]
             data['runnerOn3'] = game_json["runner_on_third"]
 
+            data['game_mode'] = game_json['tag_set']
+
         except Exception as e:
             print(f"[RioGameDataProvider] Failed to parse game data: {e}")
 
@@ -188,7 +278,6 @@ class RioGameDataProvider(QObject):
     
     def _on_hud_game_update(self, game_json):
         parsed = self.parse_game_data(game_json)
-        parsed["source"] = "hud"
         self.current_game = parsed
         self.live_game_selected.emit(parsed)
 
@@ -198,6 +287,7 @@ class RioGameDataProvider(QObject):
     def GetMSBTeamName(self, roster, captain_index):
         return team_name(roster, roster[captain_index])
     
+
 class RioHUDWatcher(QObject):
     hud_game_updated = Signal(dict)
 
@@ -258,7 +348,9 @@ class RioHUDWatcher(QObject):
             "start_time": -1,
             "tag_set": -1,
             "balls": hud_data.balls(),
-            "strikes": hud_data.strikes()
+            "strikes": hud_data.strikes(),
+            "batter_stats": hud_data.character_offensive_stats(hud_data.batting_team(), hud_data.batter_roster_location()),
+            "pitcher_stats": hud_data.character_defensive_stats(hud_data.fielding_team(), hud_data.pitcher_roster_location())
         }
 
         def flatten_roster_dict(roster_dict: dict, team_name: str) -> dict:

@@ -3,6 +3,7 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from .SettingsWidget import SettingsWidget
 from ..TSHHotkeys import TSHHotkeys
+from src.RioGameDataProvider import RioGameDataProvider
 from ..RioGameDataProvider import get_default_hud_file_path
 
 
@@ -235,6 +236,16 @@ class TSHSettingsWindow(QDialog):
             QApplication.translate(
                 "settings.rio", "Browse to select the Project Rio HUD file.")
         ))
+
+        rioSettings.append((
+            QApplication.translate("settings.rio", "Update Active Game Modes"),
+            "update_game_modes_button",
+            "button",
+            None,
+            lambda: RioGameDataProvider.instance.FetchGameModes(),
+            QApplication.translate("settings.rio", "Click to update the active game modes file.")
+        ))
+
 
         self.add_setting_widget(QApplication.translate(
             "settings", "Project Rio"), SettingsWidget("project_rio", rioSettings))

@@ -71,6 +71,9 @@ class ChallongeDataProvider(TournamentDataProvider):
                 if i >= max_iter:
                     raise e
                     # TODO: Find a way to open a warning box and unload tournament if failed
+            except requests.exceptions.ConnectionError as e:
+                raise e
+                # TODO: Handle no internet connection
             if not initialized:
                 time.sleep(0.2)
 

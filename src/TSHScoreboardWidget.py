@@ -453,11 +453,32 @@ class TSHScoreboardWidget(QWidget):
             lambda value: [
                 StateManager.Set(
                     f"score.{self.scoreboardNumber}.best_of", value),
-                StateManager.Set(f"score.{self.scoreboardNumber}.best_of_text", TSHLocaleHelper.matchNames.get(
+                StateManager.Set(f"score.{self.scoreboardNumber}.best_of", TSHLocaleHelper.matchNames.get(
                     "best_of").format(value) if value > 0 else ""),
             ]
         )
         self.scoreColumn.findChild(QSpinBox, "best_of").valueChanged.emit(0)
+
+        self.rio_savedLiveData = {}
+
+        game_mode_dict = SettingsManager.Get("project_rio", {}).get('game_modes', {})
+        self.game_mode_dict = {int(k): v for k, v in game_mode_dict.items()}
+        game_mode_combo = self.scoreColumn.findChild(QComboBox, "game_mode")
+        for value in self.game_mode_dict.values():
+            if value:
+                game_mode_combo.addItem(value)
+        game_mode_combo.currentTextChanged.connect(
+            lambda value: StateManager.Set(
+                f"score.{self.scoreboardNumber}.game_mode", value)
+        )
+
+        game_mode_combo.currentTextChanged.connect(
+            lambda _: RioGameDataProvider.instance.FetchGameModeStats(
+                StateManager.Get(f'score.{self.scoreboardNumber}.team.1.player.1.rioName'),
+                StateManager.Get(f'score.{self.scoreboardNumber}.team.2.player.1.rioName'),
+                StateManager.Get(f'score.{self.scoreboardNumber}.game_mode')
+            )
+        )
 
         self.scoreColumn.findChild(QSpinBox, "score_left").valueChanged.connect(
             lambda value: StateManager.Set(
@@ -475,6 +496,9 @@ class TSHScoreboardWidget(QWidget):
         
         self.halfInningComboBox = self.scoreColumn.findChild(QComboBox, "half_inning")
         self.halfInningComboBox.addItems(["Top", "Bottom"])
+        self.halfInningComboBox.currentTextChanged.connect(
+            lambda value: self.updateBatterPitcherComboOptions(half_inning=value)
+        )
         
         self.inningSpinBox = self.scoreColumn.findChild(QSpinBox, "inning")
 
@@ -497,6 +521,14 @@ class TSHScoreboardWidget(QWidget):
         self.scoreColumn.findChild(QSpinBox, "balls").valueChanged.connect(
             lambda value: StateManager.Set(
                 f"score.{self.scoreboardNumber}.balls", value)
+        )
+
+        self.scoreColumn.findChild(QComboBox, "batter").currentTextChanged.connect(
+            lambda value: self.update_game_mode_stats(batter=value)
+        )
+
+        self.scoreColumn.findChild(QComboBox, "pitcher").currentTextChanged.connect(
+            lambda value: self.update_game_mode_stats(pitcher=value)
         )
 
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
@@ -862,23 +894,26 @@ class TSHScoreboardWidget(QWidget):
         combo = self.scoreColumn.findChild(QComboBox, "rioLiveMatchList")
         combo.clear()
         self.rio_live_game_lookup = {}
+        hud_game = games.get('HUD')
+        server_live_games = games.get('server_live')
+        print(server_live_games)
 
-        for game in games:
-            label = f"H: {game.get('home_player', 'Unknown')} vs A: {game.get('away_player', 'Unknown')}"
-            if game.get("source") == "hud":
-                label = f"[HUD] {label}"
-            elif game.get("source") == "server":
-                label = f"[Online] {label}"
-            elif game.get("source") == "rotator":
-                label = f"[Rotator]"
-
-            i = 1
-            while label in self.rio_live_game_lookup:
-                label + f' {i}'
-                i += 1
-
+        if hud_game:
+            label = f"[HUD] H: {games['HUD'].get('home_player', 'Unknown')} vs A: {games['HUD'].get('away_player', 'Unknown')}"
             combo.addItem(label)
-            self.rio_live_game_lookup[label] = game
+            self.rio_live_game_lookup[label] = hud_game
+
+        if server_live_games:
+            for game in server_live_games:
+                label = f"H: {game.get('home_player', 'Unknown')} vs A: {game.get('away_player', 'Unknown')}"
+                
+                i = 1
+                while label in self.rio_live_game_lookup:
+                    label = f"{label} {i}"
+                    i += 1
+
+                combo.addItem(label)
+                self.rio_live_game_lookup[label] = game
 
         if combo.count() > 0:
             combo.setCurrentIndex(0)
@@ -903,7 +938,36 @@ class TSHScoreboardWidget(QWidget):
         self.rio_savedLiveData = parsed_data
         self.ChangeSetData(self.rio_savedLiveData)
 
+    def update_game_mode_stats(self, batter=None, pitcher=None):
+        print("Batter_Chaged")
+        half_inning = 0 if StateManager.Get(f'score.{self.scoreboardNumber}.half_inning') == 'Top' else 1
+        if not batter:
+            batter = StateManager.Get(f'score.{self.scoreboardNumber}.batter')
+        if not pitcher:
+            pitcher = StateManager.Get(f'score.{self.scoreboardNumber}.pitcher')
+        away_stats, home_stats = RioGameDataProvider.instance.create_stats_text(half_inning, batter, pitcher)
+
+        self.team1playerWidgets[0].findChild(QPlainTextEdit, 'custom_textbox').setPlainText(away_stats)
+        self.team2playerWidgets[0].findChild(QPlainTextEdit, 'custom_textbox').setPlainText(home_stats)
+
+    def updateBatterPitcherComboOptions(self, half_inning):
+        if not self.rio_savedLiveData or half_inning not in ['Top', 'Bottom']:
+            return
+        print(self.rio_savedLiveData)
+        away_roster = self.rio_savedLiveData['entrants'][0][0]['roster']
+        home_roster = self.rio_savedLiveData['entrants'][1][0]['roster']
+        self.scoreColumn.findChild(QComboBox, "batter").clear()
+        self.scoreColumn.findChild(QComboBox, "pitcher").clear()
+        if half_inning == "Top":
+            self.scoreColumn.findChild(QComboBox, "batter").addItems(away_roster)
+            self.scoreColumn.findChild(QComboBox, "pitcher").addItems(home_roster)
+        if half_inning == "Bottom":
+            self.scoreColumn.findChild(QComboBox, "batter").addItems(home_roster)
+            self.scoreColumn.findChild(QComboBox, "pitcher").addItems(away_roster)
+
+
     def OnSwapRioDataClicked(self):
+        print(StateManager.Get(f'score.{self.scoreboardNumber}.game_mode'))
         data = self.rio_savedLiveData
 
         StateManager.BlockSaving()
@@ -1211,6 +1275,10 @@ class TSHScoreboardWidget(QWidget):
                 self.scoreColumn.findChild(QComboBox, "half_inning"),
                 self.scoreColumn.findChild(QSpinBox, "inning")
             ]
+
+            if data.get("game_mode"):
+                game_mode_combo = self.scoreColumn.findChild(QComboBox, "game_mode")                
+                game_mode_combo.setCurrentText(self.game_mode_dict.get(data.get("game_mode", -1), "Refresh Game Modes in Settings"))
 
             # In case data is 0
             if "half_inning" in data:
