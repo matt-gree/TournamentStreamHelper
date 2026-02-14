@@ -9,6 +9,15 @@ from pathlib import Path
 from qtpy.QtCore import QThreadPool
 from qtpy.QtCore import QObject, Signal
 from pyrio.lookup import LookupDicts, Lookup
+
+# Cached Lookup instance — avoid creating a new one for every character lookup
+_lookup_instance = None
+def get_lookup():
+    global _lookup_instance
+    if _lookup_instance is None:
+        _lookup_instance = Lookup()
+    return _lookup_instance
+
 from .Workers import Worker
 from qtpy.QtCore import QFileSystemWatcher, QTimer, Qt
 from qtpy.QtGui import QStandardItemModel, QStandardItem
@@ -64,7 +73,7 @@ class RioGameDataProvider(QObject):
             self.hud_watcher._reload_game_data()
             self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
         else:
-            print(f"[RioGameDataProvider] HUD file not found at {self.hud_file}")
+            logger.warning(f"[RioGameDataProvider] HUD file not found at {self.hud_file}")
 
     def reload_hud_path(self):
         new_path = get_user_hud_path()
@@ -79,52 +88,56 @@ class RioGameDataProvider(QObject):
             self.hud_watcher.hud_game_updated.connect(self._on_hud_game_update)
             self.hud_watcher._reload_game_data()
 
+    def FetchHUDGame(self):
+        """
+        Immediately emit the HUD game data (no network call).
+        Called on startup and whenever the user hits refresh.
+        """
+        self.reload_hud_path()
+        games = []
+        if hasattr(self, "hud_watcher") and self.hud_watcher.latest_game_data:
+            hud_game = dict(self.hud_watcher.latest_game_data)
+            hud_game["source"] = "hud"
+            games.append(hud_game)
+        self.live_games = list(games)
+        self.live_games_updated.emit(list(games))
+        return games
+
     def FetchGames(self):
         """
-        Fetches both server and HUD games. Emits a single combined list.
+        Fetches games: immediately populates HUD game, then fetches
+        server games in background and merges them in.
         """
-        worker = Worker(self._fetch_all_games)
-        worker.signals.result.connect(self._on_live_games_fetched)
-        worker.signals.error.connect(lambda e: print(f"[RioGameDataProvider] Error fetching games: {e}"))
-        worker.signals.finished.connect(lambda: print("[RioGameDataProvider] Finished fetching all games"))
+        # Immediately show HUD game
+        hud_games = self.FetchHUDGame()
+
+        # Fetch server games in background (doesn't block the HUD game from showing)
+        worker = Worker(self._fetch_server_games)
+        worker.signals.result.connect(
+            lambda server_games: self._merge_server_games(hud_games, server_games))
+        worker.signals.error.connect(lambda e: print(f"[RioGameDataProvider] Error fetching server games: {e}"))
         self.threadPool.start(worker)
 
-    def _fetch_all_games(self, progress_callback=None, cancel_event=None):
-        games = []
-
-        self.reload_hud_path()
-
-        if hasattr(self, "hud_watcher"):
-            # Fetch HUD game from cached watcher state
-            hud_game = self.hud_watcher.latest_game_data
-            if hud_game:
-                hud_game["source"] = "hud"
-                games.append(hud_game)
-
-        # Fetch server games
+    def _fetch_server_games(self, progress_callback=None, cancel_event=None):
+        """Fetch only server games (runs on worker thread)."""
         try:
-            response = requests.get(self.API_URL)
+            response = requests.get(self.API_URL, timeout=5)
             response.raise_for_status()
             server_games = response.json().get("ongoing_games", [])
-            recent_server_games = [
+            return [
                 {**g, "source": "server"} for g in server_games
                 if int(g.get("start_time", 0)) > (time.time() - 60 * 30)
             ]
-            games.extend(recent_server_games)
         except Exception as e:
-            print(f"[RioGameDataProvider] Failed to fetch server games: {e}")
+            logger.debug(f"[RioGameDataProvider] Failed to fetch server games: {e}")
+            return []
 
-        # Append a special rotator entry as a dict
-        # games.append({
-        #     "source": "rotator",
-        #     "display_name": "Rotator"
-        # })
-        return games
-
-    def _on_live_games_fetched(self, all_games):
-        print(f"[DEBUG] Total fetched games: {len(all_games)}")
-        self.live_games = all_games
-        self.live_games_updated.emit(all_games)
+    def _merge_server_games(self, hud_games, server_games):
+        """Merge server games into the list and re-emit."""
+        if server_games:
+            all_games = list(hud_games) + server_games
+            self.live_games = all_games
+            self.live_games_updated.emit(all_games)
 
     def SelectLiveGame(self, game_dict):
         """
@@ -141,8 +154,6 @@ class RioGameDataProvider(QObject):
         """
         data = {"entrants": [[{}], [{}]]}
 
-        print(game_json)
-
         try:
             data["team1score"] = game_json["home_score"]
             data["team2score"] = game_json["away_score"]
@@ -150,7 +161,7 @@ class RioGameDataProvider(QObject):
             for i in range(2):
                 team = "home" if i == 0 else "away"
                 roster = [
-                    Lookup().lookup(LookupDicts.CHAR_NAME, game_json[f"{team}_roster_{j}_char"])
+                    get_lookup().lookup(LookupDicts.CHAR_NAME, game_json[f"{team}_roster_{j}_char"])
                     for j in range(9)
                 ]
                 data["entrants"][i][0]["roster"] = roster
@@ -180,9 +191,7 @@ class RioGameDataProvider(QObject):
             data['runnerOn3'] = game_json["runner_on_third"]
 
         except Exception as e:
-            print(f"[RioGameDataProvider] Failed to parse game data: {e}")
-
-        print(data)
+            logger.error(f"[RioGameDataProvider] Failed to parse game data: {e}")
 
         return data
     
@@ -226,7 +235,7 @@ class RioHUDWatcher(QObject):
                 self.latest_game_data = game  # <-- Save for access
                 self.hud_game_updated.emit(game)
         except Exception as e:
-            print(f"[RioHUDWatcher] Error reading HUD file: {e}")
+            logger.error(f"[RioHUDWatcher] Error reading HUD file: {e}")
 
     def update_hud_file(self, new_hud_file: Path):
         # Remove old path from watcher
@@ -265,7 +274,7 @@ class RioHUDWatcher(QObject):
             flat = {}
             for index, data in roster_dict.items():
                 key = f"{team_name}_roster_{index}_char"
-                flat[key] = Lookup().lookup(LookupDicts.CHAR_NAME, data["char_id"])
+                flat[key] = get_lookup().lookup(LookupDicts.CHAR_NAME, data["char_id"])
             return flat
         
         game.update(flatten_roster_dict(hud_data.roster(0), 'away'))

@@ -167,14 +167,6 @@ class TSHSettingsWindow(QDialog):
 
         displaySettings.append((
             QApplication.translate(
-                "settings.show_controller", "Show Controller"),
-            "show_controller",
-            "checkbox",
-            True
-        ))
-
-        displaySettings.append((
-            QApplication.translate(
                 "settings.show_additional", "Show Additional Info"),
             "show_additional",
             "checkbox",
@@ -184,40 +176,6 @@ class TSHSettingsWindow(QDialog):
         self.add_setting_widget(QApplication.translate(
             "settings", "Default Display Options"), SettingsWidget("display_options", displaySettings))
 
-        # Add Bluesky settings
-        bskySettings = []
-        bskySettings.append((
-            QApplication.translate(
-                "settings.bsky", "Host server"),
-            "host",
-            "textbox",
-            "https://bsky.social"
-        ))
-        bskySettings.append((
-            QApplication.translate(
-                "settings.bsky", "Bluesky Handle"),
-            "username",
-            "textbox",
-            ""
-        ))
-        bskySettings.append((
-            QApplication.translate(
-                "settings.bsky", "Application Password"),
-            "app_password",
-            "password",
-            "",
-            None,
-            QApplication.translate(
-                "settings.bsky", "You can get an app password by going into your Bluesky settings -> Privacy & Security") + "\n" +
-                QApplication.translate(
-                "settings.bsky", "Please note that said app password will be stored in plain text on your computer") + "\n\n" +
-                QApplication.translate(
-                "settings.bsky", "Do not use your regular account password!").upper()
-        ))
-        
-        self.add_setting_widget(QApplication.translate(
-            "settings", "Bluesky"), SettingsWidget("bsky_account", bskySettings))
-        
         # Add Project Rio Settings
 
         default_hud_path = get_default_hud_file_path()

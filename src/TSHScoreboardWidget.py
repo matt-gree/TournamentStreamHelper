@@ -8,8 +8,6 @@ from qtpy import uic
 from typing import List
 from src.TSHColorButton import TSHColorButton
 from .Helpers.TSHDirHelper import TSHResolve
-from .Helpers.TSHBskyHelper import post_to_bsky
-
 from src.TSHSelectSetWindow import TSHSelectSetWindow
 from src.TSHSelectStationWindow import TSHSelectStationWindow
 
@@ -201,14 +199,6 @@ class TSHScoreboardWidget(QWidget):
         self.thumbnailBtn.clicked.connect(self.GenerateThumbnail)
         self.thumbnailBtn.setVisible(False)
         
-        self.bskyBtn = QPushButton(
-            QApplication.translate("app", "Post to Bluesky") + " ")
-        self.bskyBtn.setIcon(QIcon('assets/icons/bsky.svg'))
-        self.bskyBtn.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
-        col.layout().addWidget(self.bskyBtn, Qt.AlignmentFlag.AlignRight)
-        self.bskyBtn.clicked.connect(self.PostToBsky)
-        self.bskyBtn.setVisible(False)
-
         # VISIBILITY
         col = QWidget()
         col.setLayout(QVBoxLayout())
@@ -234,7 +224,6 @@ class TSHScoreboardWidget(QWidget):
             ["Location",               ["locationLabel", "state", "country"], "show_location"],
             ["Characters",             ["characters"],                        "show_characters"],
             ["Pronouns",               ["pronoun", "pronounLabel"],           "show_pronouns"],
-            ["Controller",             ["controller", "controllerLabel"],     "show_controller"],
             ["Additional information", ["custom_textbox"],                    "show_additional"],
         ]
         self.elements[0][0] = QApplication.translate("app", "Real Name")
@@ -242,8 +231,7 @@ class TSHScoreboardWidget(QWidget):
         self.elements[2][0] = QApplication.translate("app", "Location")
         self.elements[3][0] = QApplication.translate("app", "Characters")
         self.elements[4][0] = QApplication.translate("app", "Pronouns")
-        self.elements[5][0] = QApplication.translate("app", "Controller")
-        self.elements[6][0] = QApplication.translate("app", "Additional information")
+        self.elements[5][0] = QApplication.translate("app", "Additional information")
         for element in self.elements:
             action: QAction = self.eyeBt.menu().addAction(element[0])
             action.setCheckable(True)
@@ -279,7 +267,6 @@ class TSHScoreboardWidget(QWidget):
         self.streamUrlTextBox.editingFinished.connect(
             lambda element=self.streamUrlTextBox: StateManager.Set(
                 f"score.{self.scoreboardNumber}.stream_url", element.text()))
-        self.streamUrlTextBox.editingFinished.emit()
         bottomOptions.layout().addLayout(self.streamUrl)
 
         self.btSelectSet = QPushButton(
@@ -377,7 +364,6 @@ class TSHScoreboardWidget(QWidget):
                     StateManager.Set(
                         f"score.{self.scoreboardNumber}.team.1.{element.objectName()}", element.text())
                 ])
-            c.editingFinished.emit()
 
         for c in self.team1column.findChildren(QCheckBox):
             c.toggled.connect(
@@ -385,7 +371,6 @@ class TSHScoreboardWidget(QWidget):
                     StateManager.Set(
                         f"score.{self.scoreboardNumber}.team.1.{element.objectName()}", state)
                 ])
-            c.toggled.emit(False)
 
         self.scoreColumn = uic.loadUi(TSHResolve("src/layout/TSHScoreboardScore.ui"))
         self.columns.layout().addWidget(self.scoreColumn)
@@ -417,7 +402,6 @@ class TSHScoreboardWidget(QWidget):
                     StateManager.Set(
                         f"score.{self.scoreboardNumber}.team.2.{element.objectName()}", element.text())
                 ])
-            c.editingFinished.emit()
 
         for c in self.team2column.findChildren(QCheckBox):
             c.toggled.connect(
@@ -425,7 +409,6 @@ class TSHScoreboardWidget(QWidget):
                     StateManager.Set(
                         f"score.{self.scoreboardNumber}.team.2.{element.objectName()}", state)
                 ])
-            c.toggled.emit(False)
 
         StateManager.Unset(f'score.{self.scoreboardNumber}.team.1.player')
         StateManager.Unset(f'score.{self.scoreboardNumber}.team.2.player')
@@ -446,7 +429,6 @@ class TSHScoreboardWidget(QWidget):
                         f"score.{self.scoreboardNumber}.{element.objectName()}", element.currentText())
                 ]
             )
-            c.lineEdit().editingFinished.emit()
             c.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.scoreColumn.findChild(QSpinBox, "best_of").valueChanged.connect(
@@ -457,21 +439,16 @@ class TSHScoreboardWidget(QWidget):
                     "best_of").format(value) if value > 0 else ""),
             ]
         )
-        self.scoreColumn.findChild(QSpinBox, "best_of").valueChanged.emit(0)
 
         self.scoreColumn.findChild(QSpinBox, "score_left").valueChanged.connect(
             lambda value: StateManager.Set(
                 f"score.{self.scoreboardNumber}.team.1.score", value)
         )
-        self.scoreColumn.findChild(
-            QSpinBox, "score_left").valueChanged.emit(0)
 
         self.scoreColumn.findChild(QSpinBox, "score_right").valueChanged.connect(
             lambda value: StateManager.Set(
                 f"score.{self.scoreboardNumber}.team.2.score", value)
         )
-        self.scoreColumn.findChild(
-            QSpinBox, "score_right").valueChanged.emit(0)
         
         self.halfInningComboBox = self.scoreColumn.findChild(QComboBox, "half_inning")
         self.halfInningComboBox.addItems(["Top", "Bottom"])
@@ -498,6 +475,14 @@ class TSHScoreboardWidget(QWidget):
             lambda value: StateManager.Set(
                 f"score.{self.scoreboardNumber}.balls", value)
         )
+
+        # Connect score column checkboxes (runner checkboxes) once during init
+        for c in self.scoreColumn.findChildren(QCheckBox):
+            c.toggled.connect(
+                lambda state, element=c: [
+                    StateManager.Set(
+                        f"score.{self.scoreboardNumber}.{element.objectName()}", state)
+                ])
 
         self.team1column.findChild(QLineEdit, "teamName").editingFinished.connect(
             lambda: self.ExportTeamLogo(
@@ -630,29 +615,6 @@ class TSHScoreboardWidget(QWidget):
                 msgBox.exec()
             else:
                 raise e
-    
-    def PostToBsky(self):
-        thumbnailPath = self.GenerateThumbnail(quiet_mode=True)
-        if thumbnailPath:
-            msgBox = QMessageBox()
-            msgBox.setWindowIcon(QIcon('assets/icons/icon.png'))
-            msgBox.setWindowTitle(QApplication.translate(
-                "app", "TSH - Bluesky"))
-
-            try:
-                post_to_bsky(scoreboardNumber=self.scoreboardNumber, image_path=thumbnailPath.replace(".png", ".jpg"))
-                username = SettingsManager.Get("bsky_account", {}).get("username")
-                msgBox.setText(QApplication.translate("app", "The post has successfully been sent to account {0}").format(username))
-                msgBox.setIcon(QMessageBox.NoIcon)
-                msgBox.exec()
-            except Exception as e:
-                msgBox.setText(QApplication.translate("app", "Warning"))
-                msgBox.setInformativeText(str(e))
-                msgBox.setIcon(QMessageBox.Warning)
-                msgBox.exec()
-            for rm_path in [thumbnailPath, thumbnailPath.replace(".png", ".jpg"), thumbnailPath.replace(".png", "_desc.txt"), thumbnailPath.replace(".png", "_title.txt")]:
-                if os.path.exists(rm_path):
-                    os.remove(rm_path)
     
     def ToggleElements(self, action: QAction, elements):
         for pw in self.playerWidgets:
@@ -914,8 +876,6 @@ class TSHScoreboardWidget(QWidget):
 
         teamInstances = [self.team1playerWidgets, self.team2playerWidgets]
 
-        print(data)
-
         if not data.get("entrants"):
             return
         
@@ -976,7 +936,7 @@ class TSHScoreboardWidget(QWidget):
             self.autoUpdateTimer = QTimer()
             self.autoUpdateTimer.start(5000)
             self.timeLeftTimer = QTimer()
-            self.timeLeftTimer.start(100)
+            self.timeLeftTimer.start(1000)
             self.timeLeftTimer.timeout.connect(self.UpdateTimeLeftTimer)
             self.timerLayout.setVisible(True)
 
@@ -1238,14 +1198,6 @@ class TSHScoreboardWidget(QWidget):
                 pitcher_combo.setCurrentText(data.get("pitcher"))
                 pitcher_combo.lineEdit().editingFinished.emit()
             
-            for c in self.scoreColumn.findChildren(QCheckBox):
-                c.toggled.connect(
-                    lambda state, element=c: [
-                        StateManager.Set(
-                            f"score.{self.scoreboardNumber}.{element.objectName()}", state)
-                    ])
-                c.toggled.emit(False)
-
             runnerContainers = [
                 self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn1"),
                 self.scoreColumn.findChild(QCheckBox, "cbRioRunnerOn2"),

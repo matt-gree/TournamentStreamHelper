@@ -26,10 +26,12 @@ class TSHAlertNotification(QObject):
         class AlertThread(QThread):
             def run(self):
                 alerts = None
+                alerts_red = None
 
                 try:
                     response = requests.get(
-                        "https://raw.githubusercontent.com/mattgree/TournamentStreamHelper/main/assets/alerts.json")
+                        "https://raw.githubusercontent.com/matt-gree/TournamentStreamHelper/main/assets/alerts.json",
+                        timeout=5)
                     alerts = json.loads(response.text)
                 except Exception as e:
                     logger.error(traceback.format_exc())

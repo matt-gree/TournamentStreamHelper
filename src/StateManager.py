@@ -24,6 +24,9 @@ class StateManager:
     threads = []
     loop = None
 
+    _debounce_timer = None
+    _DEBOUNCE_MS = 50
+
     def BlockSaving():
         StateManager.saveBlocked += 1
         logger.warning(
@@ -36,10 +39,21 @@ class StateManager:
         if StateManager.saveBlocked == 0:
             StateManager.SaveState()
 
+    def _ScheduleSave():
+        """Debounce: schedule a save after _DEBOUNCE_MS, resetting any pending timer."""
+        if StateManager.saveBlocked != 0:
+            return
+        if StateManager._debounce_timer is not None:
+            StateManager._debounce_timer.cancel()
+        StateManager._debounce_timer = threading.Timer(
+            StateManager._DEBOUNCE_MS / 1000.0, StateManager.SaveState)
+        StateManager._debounce_timer.daemon = True
+        StateManager._debounce_timer.start()
+
     def SaveState():
         if StateManager.saveBlocked == 0:
             with StateManager.lock:
-                StateManager.threads = []
+                StateManager._debounce_timer = None
 
                 def ExportAll(ref_diff):
                     with open("./out/program_state.json", 'wb', buffering=8192) as file:
@@ -75,11 +89,8 @@ class StateManager:
 
                     exportThread = threading.Thread(
                         target=partial(ExportAll, ref_diff=diff))
-                    StateManager.threads.append(exportThread)
+                    exportThread.daemon = True
                     exportThread.start()
-
-                    for t in StateManager.threads:
-                        t.join()
 
     def LoadState():
         try:
@@ -94,8 +105,6 @@ class StateManager:
 
     def Set(key: str, value):
         with StateManager.lock:
-            # StateManager.lastSavedState = deep_clone(StateManager.state)
-
             deep_set(StateManager.state, key, value)
 
             final_key = "root"
@@ -104,13 +113,10 @@ class StateManager:
 
             StateManager.changedKeys.append(final_key)
 
-            if StateManager.saveBlocked == 0:
-                StateManager.SaveState()
-                # StateManager.ExportText(oldState)
+            StateManager._ScheduleSave()
 
     def Unset(key: str):
         with StateManager.lock:
-            # StateManager.lastSavedState = deep_clone(StateManager.state)
             deep_unset(StateManager.state, key)
 
             final_key = "root"
@@ -118,9 +124,7 @@ class StateManager:
                 final_key += f"['{k}']"
             StateManager.changedKeys.append(final_key)
 
-            if StateManager.saveBlocked == 0:
-                StateManager.SaveState()
-                # StateManager.ExportText(oldState)
+            StateManager._ScheduleSave()
 
     def Get(key: str, default=None):
         return deep_get(StateManager.state, key, default)
@@ -184,8 +188,7 @@ class StateManager:
     def CreateFilesDict(path, di):
         pathdirs = "/".join(path.split("/")[0:-1])
 
-        if not os.path.isdir("./out/"+pathdirs):
-            os.makedirs("./out/"+pathdirs)
+        os.makedirs("./out/"+pathdirs, exist_ok=True)
 
         if type(di) == dict:
             for k, i in di.items():

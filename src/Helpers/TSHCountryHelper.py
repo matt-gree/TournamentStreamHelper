@@ -3,18 +3,69 @@ import unicodedata
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
-import requests
 import os
 import traceback
-import time
-from pathlib import Path
-
-from .TSHDirHelper import TSHResolve
-from .TSHDictHelper import deep_get
-from ..TournamentDataProvider import TournamentDataProvider
-from .TSHLocaleHelper import TSHLocaleHelper
-import orjson
 from loguru import logger
+
+
+# ---------------------------------------------------------------------------
+# Inline US + Canada state/province data — replaces the 37 MB JSON download.
+# This keeps memory usage minimal while covering all MSB competitors.
+# ---------------------------------------------------------------------------
+_US_STATES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming", "DC": "District of Columbia",
+    "PR": "Puerto Rico", "VI": "Virgin Islands", "GU": "Guam",
+    "AS": "American Samoa", "MP": "Northern Mariana Islands",
+}
+
+_CA_PROVINCES = {
+    "AB": "Alberta", "BC": "British Columbia", "MB": "Manitoba",
+    "NB": "New Brunswick", "NL": "Newfoundland and Labrador",
+    "NS": "Nova Scotia", "NT": "Northwest Territories", "NU": "Nunavut",
+    "ON": "Ontario", "PE": "Prince Edward Island", "QC": "Quebec",
+    "SK": "Saskatchewan", "YT": "Yukon",
+}
+
+_BUILTIN_COUNTRIES = {
+    "US": {
+        "name": "United States", "display_name": "United States",
+        "en_name": "United States", "code": "US",
+        "latitude": "38.00000000", "longitude": "-97.00000000",
+        "states": {
+            code: {
+                "name": name, "code": code,
+                "original_code": code,
+                "latitude": None, "longitude": None,
+            }
+            for code, name in _US_STATES.items()
+        },
+    },
+    "CA": {
+        "name": "Canada", "display_name": "Canada",
+        "en_name": "Canada", "code": "CA",
+        "latitude": "60.00000000", "longitude": "-95.00000000",
+        "states": {
+            code: {
+                "name": name, "code": code,
+                "original_code": code,
+                "latitude": None, "longitude": None,
+            }
+            for code, name in _CA_PROVINCES.items()
+        },
+    },
+}
 
 
 class TSHCountryHelperSignals(QObject):
@@ -32,198 +83,77 @@ class TSHCountryHelper(QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self.UpdateCountriesFile()
+        # Load inline data immediately — no download, no large JSON parse
+        TSHCountryHelper.LoadCountries()
 
+    # ------------------------------------------------------------------
+    # Kept for API compatibility — no longer downloads anything.
+    # ------------------------------------------------------------------
     def UpdateCountriesFile(self):
-        class DownloaderThread(QThread):
-            def run(self):
-                out_file = Path('./assets/countries+states+cities.json')
-
-                if out_file.exists():
-                    modtime = out_file.stat().st_mtime
-                    # Less than 12 hours since file was written to?
-                    # Skip so there aren't redundant downloads
-                    if time.time() - modtime <= (12 * 60 * 60):
-                        logger.debug("Skipping countries file download")
-                        TSHCountryHelper.LoadCountries()
-                        return
-
-                try:
-                    url = 'https://raw.githubusercontent.com/dr5hn/countries-states-cities-database/refs/heads/master/json/countries%2Bstates%2Bcities.json'
-                    r = requests.get(url, allow_redirects=True)
-                    tmp_file = Path('./assets/countries+states+cities.json.tmp')
-
-                    with tmp_file.open(mode='wb') as f:
-                        f.write(r.content)
-
-                    try:
-                        # Test if downloaded JSON is valid
-                        with tmp_file.open(mode='r', encoding='utf-8') as f:
-                            orjson.loads(f.read())
-
-                        # Remove old file, overwrite with new one
-                        tmp_file.replace(out_file)
-
-                        logger.info("Countries file updated")
-                        TSHCountryHelper.LoadCountries()
-                    except:
-                        logger.error("Countries files download failed")
-                except Exception as e:
-                    logger.error(
-                        "Could not update countries+states+cities.json: "+str(e))
-        downloaderThread = DownloaderThread(self)
-        downloaderThread.start()
+        pass
 
     def remove_accents_lower(input_str):
         nfkd_form = unicodedata.normalize('NFKD', input_str)
         return u"".join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
 
     def GetBasicCountryInfo(country_code):
-        if not country_code in TSHCountryHelper.countries:
+        if country_code not in TSHCountryHelper.countries:
             return {}
 
+        c = TSHCountryHelper.countries[country_code]
         return {
-            "name": TSHCountryHelper.countries[country_code]["name"],
-            "display_name": TSHCountryHelper.countries[country_code]["display_name"],
-            "en_name": TSHCountryHelper.countries[country_code]["en_name"],
-            "code": TSHCountryHelper.countries[country_code]["code"],
-            "latitude": TSHCountryHelper.countries[country_code]["latitude"],
-            "longitude": TSHCountryHelper.countries[country_code]["longitude"],
+            "name": c["name"],
+            "display_name": c["display_name"],
+            "en_name": c["en_name"],
+            "code": c["code"],
+            "latitude": c["latitude"],
+            "longitude": c["longitude"],
             "asset": f'./assets/country_flag/{country_code.lower()}.png'
         }
 
     def LoadCountries():
         try:
-            f = open("./assets/countries+states+cities.json",
-                     'r', encoding='utf-8')
-            countries_json = orjson.loads(f.read())
-            TSHCountryHelper.countries_json = countries_json
+            # Use hardcoded US/CA data instead of parsing 37 MB JSON
+            TSHCountryHelper.countries = {}
+            TSHCountryHelper.cities = {}
 
-            # Setup countries - states
-            for c in countries_json:
-                try:
-                    # Load display name
-                    display_name = c.get("name")
+            for iso2, cdata in _BUILTIN_COUNTRIES.items():
+                TSHCountryHelper.countries[iso2] = {
+                    "name": cdata["name"],
+                    "display_name": cdata["display_name"],
+                    "en_name": cdata["en_name"],
+                    "code": cdata["code"],
+                    "latitude": cdata["latitude"],
+                    "longitude": cdata["longitude"],
+                    "states": dict(cdata["states"]),
+                }
 
-                    locale = TSHLocaleHelper.programLocale
-                    if locale.replace("_", "-") in c.get("translations", {}):
-                        display_name = c.get("translations", {})[locale.replace(
-                            "_", "-")]
-                    elif re.split("-|_", locale)[0] in c.get("translations", {}):
-                        display_name = c.get("translations", {})[re.split(
-                            "-|_", locale)[0]]
-
-                    # Load display name
-                    export_name = c["name"]
-
-                    locale = TSHLocaleHelper.exportLocale
-                    if locale.replace("_", "-") in c.get("translations", {}):
-                        export_name = c.get("translations", {})[locale.replace(
-                            "_", "-")]
-                    elif re.split("-|_", locale)[0] in c.get("translations", {}):
-                        export_name = c.get("translations", {})[re.split(
-                            "-|_", locale)[0]]
-
-                    ccode = c.get("iso2") if not c.get("iso2").isdigit() else "".join([
-                        word[0] for word in re.split(r'\s+|-', c.get("name"))])
-
-                    TSHCountryHelper.countries[c["iso2"]] = {
-                        "name": export_name,
-                        "display_name": display_name,
-                        "en_name": c.get("name"),
-                        "code": ccode,
-                        "latitude": c.get("latitude"),
-                        "longitude": c.get("longitude"),
-                        "states": {}
-                    }
-
-                    for s in c.get("states", []):
-                        if s.get("state_code") is None:
-                            continue
-
-                        scode = s.get("state_code") if not s.get("state_code").isdigit() else "".join([
-                            word[0] for word in re.split(r'\s+|-', s.get("name").strip()) if len(word) > 0])
-
-                        TSHCountryHelper.countries[c["iso2"]]["states"][s["state_code"]] = {
-                            "name": s.get("name"),
-                            "code": scode,
-                            "original_code": s.get("state_code"),
-                            "latitude": s.get("latitude"),
-                            "longitude": s.get("longitude"),
-                        }
-                except:
-                    pass
-
-            # Setup model
+            # Build the Qt model
             TSHCountryHelper.countryModel = QStandardItemModel()
 
             noCountry = QStandardItem()
             noCountry.setData({}, Qt.ItemDataRole.UserRole)
             TSHCountryHelper.countryModel.appendRow(noCountry)
 
-            for i, country_code in enumerate(TSHCountryHelper.countries.keys()):
+            for country_code in TSHCountryHelper.countries:
                 item = QStandardItem()
                 item.setIcon(
                     QIcon(f'./assets/country_flag/{country_code.lower()}.png'))
-                countryData = TSHCountryHelper.GetBasicCountryInfo(
-                    country_code)
+                countryData = TSHCountryHelper.GetBasicCountryInfo(country_code)
                 item.setData(countryData, Qt.ItemDataRole.UserRole)
+                c = TSHCountryHelper.countries[country_code]
                 item.setData(
-                    f'{TSHCountryHelper.countries[country_code]["display_name"]} / {TSHCountryHelper.countries[country_code]["en_name"]} ({country_code})', Qt.ItemDataRole.EditRole)
+                    f'{c["display_name"]} / {c["en_name"]} ({country_code})',
+                    Qt.ItemDataRole.EditRole)
                 TSHCountryHelper.countryModel.appendRow(item)
-
-            # Setup cities - states for reverse search
-            for country in countries_json:
-                for state in country.get("states"):
-                    for c in state["cities"]:
-                        if country["iso2"] not in TSHCountryHelper.cities:
-                            TSHCountryHelper.cities[country["iso2"]] = {}
-                        city_name = TSHCountryHelper.remove_accents_lower(
-                            c["name"])
-                        if city_name not in TSHCountryHelper.cities[country["iso2"]]:
-                            TSHCountryHelper.cities[country["iso2"]
-                                                    ][city_name] = state["state_code"]
 
             TSHCountryHelper.signals.countriesUpdated.emit()
-
-            AdditionalFlags = os.listdir("./user_data/additional_flag")
-
-            AdditionalFlagsFiltered = []
-            for flag in AdditionalFlags:
-                filename = os.path.basename(flag)
-                ext = filename.split(".")[-1]
-                #  Remove flags with less than 3 characters
-                if len(filename.removesuffix("."+ext)) >= 3:
-                    AdditionalFlagsFiltered.append(flag)
-            AdditionalFlags = AdditionalFlagsFiltered
-
-            if AdditionalFlags:
-                separator = QStandardItem()
-                separator.setData("    " + QApplication.translate("app",
-                                  "Custom Flags").upper() + "    ", Qt.ItemDataRole.EditRole)
-                separator.setEnabled(False)
-                separator.setSelectable(False)
-                TSHCountryHelper.countryModel.appendRow(separator)
-
-            for flag in AdditionalFlags:
-                item = QStandardItem()
-                item.setIcon(QIcon(f"./user_data/additional_flag/{flag}"))
-                item.setData({
-                    "name": flag[:-4],
-                    "display_name": flag[:-4],
-                    "en_name": flag[:-4],
-                    "code": flag[:-4],
-                    "asset": f'./user_data/additional_flag/{flag}'
-                }, Qt.ItemDataRole.UserRole)
-                item.setData(flag[:-4], Qt.ItemDataRole.EditRole)
-                TSHCountryHelper.countryModel.appendRow(item)
         except:
             TSHCountryHelper.countries_json = {}
             logger.error(traceback.format_exc())
 
     def FindState(countryCode, city):
-        # State explicit?
-        # Normalize parts of city string
+        """Find state/province code from a city string."""
         split = city.replace(" - ", ",").split(",")
 
         logger.debug(f"Finding State from city string [{city}]")
@@ -232,14 +162,14 @@ class TSHCountryHelper(QObject):
             part = part.strip()
 
             state = next(
-                (st for st in TSHCountryHelper.countries.get(countryCode, {}).get("states", {}).values(
-                ) if TSHCountryHelper.remove_accents_lower(st["code"]) == TSHCountryHelper.remove_accents_lower(part)),
+                (st for st in TSHCountryHelper.countries.get(countryCode, {}).get("states", {}).values()
+                 if TSHCountryHelper.remove_accents_lower(st["code"]) == TSHCountryHelper.remove_accents_lower(part)),
                 None
             )
             if state is None:
                 state = next(
-                    (st for st in TSHCountryHelper.countries.get(countryCode, {}).get("states", {}).values(
-                    ) if TSHCountryHelper.remove_accents_lower(st["name"]) == TSHCountryHelper.remove_accents_lower(part)),
+                    (st for st in TSHCountryHelper.countries.get(countryCode, {}).get("states", {}).values()
+                     if TSHCountryHelper.remove_accents_lower(st["name"]) == TSHCountryHelper.remove_accents_lower(part)),
                     None
                 )
             if state is not None:
@@ -247,7 +177,7 @@ class TSHCountryHelper(QObject):
                     f"State was explicit: [{city}] -> [{part}] = {state}")
                 return state["original_code"]
 
-        # No, so get by City
+        # No explicit state found, try city-based lookup
         for part in split[::-1]:
             part = part.strip()
 

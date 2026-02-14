@@ -99,23 +99,13 @@ class TSHSelectSetWindow(QDialog):
         if data == None:
             return
 
-        if data["progress"] >= data["totalPages"]:
+        is_final = data["progress"] >= data["totalPages"]
+
+        if is_final:
             self.labelStatus.setText("")
         else:
             self.labelStatus.setText(
                 f"Fetching sets...({data['progress']}/{data['totalPages']})")
-
-        horizontal_labels = ["Stream", "Station",
-                             "Wave", "Title", "Player 1", "Player 2"]
-        horizontal_labels[0] = QApplication.translate("app", "Stream")
-        horizontal_labels[1] = QApplication.translate("app", "Station")
-        horizontal_labels[2] = QApplication.translate("app", "Phase")
-        horizontal_labels[3] = QApplication.translate("app", "Match")
-        horizontal_labels[4] = QApplication.translate(
-            "app", "Player {0}").format(1)
-        horizontal_labels[5] = QApplication.translate(
-            "app", "Player {0}").format(2)
-        self.model.setHorizontalHeaderLabels(horizontal_labels)
 
         sets = data["sets"]
 
@@ -152,13 +142,25 @@ class TSHSelectSetWindow(QDialog):
                     dataItem
                 ])
 
-        self.proxyModel.setSourceModel(self.model)
-        self.startggSetSelectionItemList.setColumnHidden(6, True)
-        self.startggSetSelectionItemList.resizeColumnsToContents()
-        self.startggSetSelectionItemList.horizontalHeader(
-        ).setSectionResizeMode(QHeaderView.Stretch)
-        QApplication.processEvents()
-        self.resize(self.width(), self.height())
+        # Only update the view once all pages are loaded (or on final page)
+        if is_final:
+            horizontal_labels = ["Stream", "Station",
+                                 "Wave", "Title", "Player 1", "Player 2"]
+            horizontal_labels[0] = QApplication.translate("app", "Stream")
+            horizontal_labels[1] = QApplication.translate("app", "Station")
+            horizontal_labels[2] = QApplication.translate("app", "Phase")
+            horizontal_labels[3] = QApplication.translate("app", "Match")
+            horizontal_labels[4] = QApplication.translate(
+                "app", "Player {0}").format(1)
+            horizontal_labels[5] = QApplication.translate(
+                "app", "Player {0}").format(2)
+            self.model.setHorizontalHeaderLabels(horizontal_labels)
+
+            self.proxyModel.setSourceModel(self.model)
+            self.startggSetSelectionItemList.setColumnHidden(6, True)
+            self.startggSetSelectionItemList.resizeColumnsToContents()
+            self.startggSetSelectionItemList.horizontalHeader(
+            ).setSectionResizeMode(QHeaderView.Stretch)
 
     def LoadSelectedSet(self):
         row = 0

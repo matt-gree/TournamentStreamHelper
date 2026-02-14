@@ -64,3 +64,5 @@ env
 desktop.ini
 assets/controller/*
 assets/*_tmp
+venv/
+.claude/

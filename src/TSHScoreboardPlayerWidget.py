@@ -8,7 +8,6 @@ from qtpy import uic
 from .Helpers.TSHCountryHelper import TSHCountryHelper
 from .StateManager import StateManager
 from .TSHGameAssetManager import TSHGameAssetManager
-from .Helpers.TSHControllerHelper import TSHControllerHelper
 from .TSHPlayerDB import TSHPlayerDB
 from .TSHTournamentDataProvider import TSHTournamentDataProvider
 from .Helpers.TSHLocaleHelper import TSHLocaleHelper
@@ -43,6 +42,8 @@ class TSHScoreboardPlayerWidget(QGroupBox):
     def __init__(self, index=0, teamNumber=0, path="", scoreboardNumber=1, customName="", *args):
         super().__init__(*args)
 
+        self._initializing = True  # Guard against signal storms during init
+
         self.instanceSignals = TSHScoreboardPlayerWidgetSignals()
 
         self.path = path
@@ -55,8 +56,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.losers = False
 
         uic.loadUi(TSHResolve("src/layout/TSHScoreboardPlayer.ui"), self)
-        
-        self.LoadControllers()
 
         custom_textbox_layout = QHBoxLayout()
         self.custom_textbox = QPlainTextEdit()
@@ -154,7 +153,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                     self.ComboBoxIndexChanged(element)
                 ]
             )
-            c.currentIndexChanged.emit(0)
 
         self.SetCharactersPerPlayer(9)
         self.selected_captain_index = 0
@@ -186,12 +184,18 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.pronoun_completer.setModel(self.pronoun_model)
         self.pronoun_model.setStringList(self.pronoun_list)
 
+        self._initializing = False  # Init complete, signals now active
+
     def ComboBoxIndexChanged(self, element: QComboBox):
+        if self._initializing:
+            return
         StateManager.Set(
             f"{self.path}.{element.objectName()}", element.currentData())
         self.instanceSignals.dataChanged.emit()
 
     def CharactersChanged(self, includeMains=False):
+        if getattr(self, '_building_characters', False):
+            return
         with self.dataLock:
             characters = {}
 
@@ -368,7 +372,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
                                     widget.editingFinished.emit()
                                 if type(widget) == QComboBox:
                                     widget.setCurrentIndex(tmpData[i][objName])
-                        QCoreApplication.processEvents()
                         w.ExportPlayerImages(tmpData[i]["online_avatar"])
                         w.ExportPlayerId(tmpData[i]["id"])
                         StateManager.Set(f"{w.path}.seed", tmpData[i]["seed"])
@@ -392,6 +395,9 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         if not hasattr(self, 'captain_radio_group'):
             self.captain_radio_group = QButtonGroup(self)
             self.captain_radio_group.setExclusive(True)
+
+        # Guard to suppress CharactersChanged() during bulk add
+        self._building_characters = True
 
         # Clear excess character entries
         while len(self.character_elements) > number:
@@ -505,7 +511,9 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             player_character_color.setObjectName(f"character_color_{len(self.character_elements)}")
             player_variant.setObjectName(f"variant_{len(self.character_elements)}")
 
-            self.CharactersChanged(includeMains=True)
+        # Done building — fire CharactersChanged once for all characters
+        self._building_characters = False
+        self.CharactersChanged(includeMains=True)
 
     def SwapCharacters(self, index1: int, index2: int):
         StateManager.BlockSaving()
@@ -549,46 +557,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         self.CharactersChanged()
 
         StateManager.ReleaseSaving()
-
-    def LoadControllers(self):
-        try:
-            if TSHControllerHelper.instance.controllerModel == None:
-                TSHControllerHelper.BuildControllerTree()
-                TSHControllerHelper.UpdateControllerModel()
-            
-            controller_layout = QVBoxLayout()
-
-            controller_label = QLabel()
-            controller_layout.addWidget(controller_label)
-            controller_label.setText(QApplication.translate("app", "Controller").upper())
-            controller_label.setStyleSheet("QLabel{font-weight: bold; font-size: 8pt;}")
-            controller_label.setObjectName("controllerLabel")
-
-            self.controller = QComboBox()
-
-            controller_layout.addWidget(self.controller)
-            self.layout().addLayout(controller_layout, 97, 1, 1, 1)
-
-            self.controller.setObjectName("controller")
-            self.controller.setEditable(True)
-            self.controller.completer().setFilterMode(Qt.MatchFlag.MatchContains)
-            self.controller.completer().setCompletionMode(QCompleter.PopupCompletion)
-            self.controller.completer().popup().setMinimumWidth(250)
-            self.controller.setIconSize(QSize(24, 24))
-            self.controller.setFixedHeight(32)
-            self.controller.setMinimumWidth(60)
-            # self.controller.setMaximumWidth(120)
-            self.controller.setFont(
-                QFont(self.controller.font().family(), 9))
-            self.controller.setModel(
-                TSHControllerHelper.instance.controllerModel)
-            view = QListView()
-            view.setIconSize(QSize(24, 24))
-            self.controller.setView(view)
-
-        except Exception as e:
-            logger.error(traceback.format_exc())
-            exit()
 
     def LoadCountries(self):
         try:
@@ -854,19 +822,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
 
                 StateManager.Set(f"{self.path}.rio_captainIndex", index)
 
-            if data.get("controller"):
-                controllerElement: QComboBox = self.findChild(
-                    QComboBox, "controller")
-                controllerIndex = 0
-                for i in range(controllerElement.model().rowCount()):
-                    item = controllerElement.model().item(i).data(Qt.ItemDataRole.UserRole)
-                    if item:
-                        if data.get("controller") == item.get("codename"):
-                            controllerIndex = i
-                            break
-                if controllerElement.currentIndex() != controllerIndex:
-                    controllerElement.setCurrentIndex(controllerIndex)
-
             if data.get("mains") and no_mains != True:
                 if type(data.get("mains")) == list:
                     for element in self.character_elements:
@@ -982,10 +937,6 @@ class TSHScoreboardPlayerWidget(QGroupBox):
         if self.findChild(QComboBox, "state").currentData(Qt.ItemDataRole.UserRole):
             playerData["state_code"] = self.findChild(
                 QComboBox, "state").currentData(Qt.ItemDataRole.UserRole).get("code")
-        
-        if self.findChild(QComboBox, "controller").currentData(Qt.ItemDataRole.UserRole):
-            playerData["controller"] = self.findChild(
-                QComboBox, "controller").currentData(Qt.ItemDataRole.UserRole).get("codename")
 
         TSHPlayerDB.AddPlayers([playerData], overwrite=True)
 

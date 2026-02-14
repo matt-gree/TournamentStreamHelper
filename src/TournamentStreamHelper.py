@@ -120,7 +120,6 @@ from .Workers import *
 from .StateManager import StateManager
 from .SettingsManager import SettingsManager
 from .Helpers.TSHCountryHelper import TSHCountryHelper
-from .Helpers.TSHControllerHelper import TSHControllerHelper
 from .TSHScoreboardManager import TSHScoreboardManager
 from .TSHThumbnailSettingsWidget import TSHThumbnailSettingsWidget
 from src.TSHAssetDownloader import TSHAssetDownloader
@@ -304,9 +303,6 @@ class Window(QMainWindow):
         splash = QSplashScreen(
             QPixmap('assets/icons/icon.png').scaled(128, 128))
         splash.show()
-
-        time.sleep(0.1)
-
         App.processEvents()
 
         self.programState = {}
@@ -751,14 +747,13 @@ class Window(QMainWindow):
         self.gameSelect.activated.connect(
             lambda x: TSHGameAssetManager.instance.LoadGameAssets(self.gameSelect.currentData()))
 
-        # Force Mario Superstar Baseball as the default selection and load it immediately
-        default_game_name = "Mario Superstar Baseball"
-        self.gameSelect.setCurrentText(default_game_name)
-
         TSHGameAssetManager.instance.signals.onLoad.connect(
             self.SetGame)
         TSHGameAssetManager.instance.signals.onLoadAssets.connect(
             self.ReloadGames)
+        # Auto-select MSB once game list is populated
+        TSHGameAssetManager.instance.signals.onLoadAssets.connect(
+            self.AutoSelectMSB)
         TSHGameAssetManager.instance.signals.onLoad.connect(
             TSHAssetDownloader.instance.CheckAssetUpdates
         )
@@ -803,7 +798,15 @@ class Window(QMainWindow):
 
         TSHScoreboardManager.instance.UpdateAmount(1)
 
-        self.CheckForUpdates(True)
+        # Check for updates in background thread to avoid blocking startup
+        class UpdateCheckerThread(QThread):
+            def __init__(self, parent):
+                super().__init__(parent)
+            def run(self):
+                self.parent().CheckForUpdates(True)
+        self._updateChecker = UpdateCheckerThread(self)
+        self._updateChecker.start()
+
         self.ReloadGames()
 
         self.qtSettings = QSettings("joao_shino", "TournamentStreamHelper")
@@ -832,14 +835,31 @@ class Window(QMainWindow):
             self.ToggleTopOption)
         StateManager.Unset("completed_sets")
 
-        DownloadLayoutsOnBoot()
+        # Download layouts in background to avoid blocking startup
+        class LayoutDownloaderThread(QThread):
+            def run(self):
+                DownloadLayoutsOnBoot()
+        self._layoutDownloader = LayoutDownloaderThread(self)
+        self._layoutDownloader.start()
 
     def SetGame(self):
         index = next((i for i in range(self.gameSelect.model().rowCount()) if self.gameSelect.itemText(i) == TSHGameAssetManager.instance.selectedGame.get(
             "name") or self.gameSelect.itemText(i) == TSHGameAssetManager.instance.selectedGame.get("codename")), None)
         if index is not None:
             self.gameSelect.setCurrentIndex(index)
-    
+
+    def AutoSelectMSB(self):
+        """Auto-select Mario Superstar Baseball if no game is currently loaded."""
+        if TSHGameAssetManager.instance.selectedGame.get("codename"):
+            return  # A game is already selected
+        for i in range(self.gameSelect.model().rowCount()):
+            text = self.gameSelect.itemText(i)
+            if text and ("Mario Superstar Baseball" in text or text == "msb"):
+                self.gameSelect.setCurrentIndex(i)
+                TSHGameAssetManager.instance.LoadGameAssets(
+                    self.gameSelect.currentData())
+                break
+
     def Signal_GameChange(self, url):
         if url == "":
             self.gameSelect.setCurrentIndex(0)
@@ -893,6 +913,16 @@ class Window(QMainWindow):
                 crashpath.unlink()
         except:
             pass
+
+        # Stop the Flask/SocketIO web server thread
+        if hasattr(self, "webserver") and self.webserver:
+            self.webserver.shutdown()
+            self.webserver.wait(3000)  # wait up to 3s for thread to finish
+
+        # Schedule quit on the event loop so timers can be cleaned up on
+        # their owning thread, avoiding "Timers cannot be stopped from
+        # another thread" warnings.
+        QTimer.singleShot(0, QApplication.quit)
 
     def ReloadGames(self):
         logger.info("Reload games")
@@ -1067,23 +1097,9 @@ class Window(QMainWindow):
                     self.updateAction.setText(
                         QApplication.translate("app", "Check for updates") + " " + QApplication.translate("punctuation", "[") + QApplication.translate("app", "Update available!") + QApplication.translate("punctuation", "]"))
 
-    # Checks for asset updates after game assets are loaded
-    # If updates are available, edit QAction icon
+    # Asset update checking disabled — MSB assets are bundled locally
     def OnAssetUpdates(self, updates):
-        try:
-            if len(updates) > 0:
-                baseIcon = self.downloadAssetsAction.icon().pixmap(32, 32)
-                updateIcon = QImage(
-                    "./assets/icons/update_circle.svg").scaled(12, 12)
-                p = QPainter(baseIcon)
-                p.drawImage(QPoint(20, 0), updateIcon)
-                p.end()
-                self.downloadAssetsAction.setIcon(QIcon(baseIcon))
-            else:
-                baseIcon = self.downloadAssetsAction.icon().pixmap(32, 32)
-                self.downloadAssetsAction.setIcon(QIcon(baseIcon))
-        except:
-            logger.error(traceback.format_exc())
+        pass
 
     def ToggleAlwaysOnTop(self, checked):
         if checked:

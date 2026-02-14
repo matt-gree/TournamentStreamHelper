@@ -526,6 +526,13 @@ class WebServer(QThread):
         except Exception as e:
             logger.error(f"File not found: {e}")
 
+    def shutdown(self):
+        """Stop the Flask/SocketIO server so the process can exit cleanly."""
+        try:
+            self.socketio.stop()
+        except Exception:
+            pass
+
     def run(self):
         try:
             self.socketio.run(app=self.app, host=self.host_name, port=self.port,

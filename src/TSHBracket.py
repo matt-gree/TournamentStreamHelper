@@ -152,7 +152,7 @@ class Bracket():
                             targetIdW = 1
                         _set.winNextSlot = targetIdW
                     except KeyError as e:
-                        logger.warning(f"Bracket KeyError: {e}")
+                        logger.debug(f"Bracket KeyError: {e}")
                     except:
                         logger.error(traceback.format_exc())
                     try:
@@ -176,7 +176,7 @@ class Bracket():
 
                         _set.loseNextSlot = targetIdL
                     except KeyError as e:
-                        logger.warning(f"Bracket KeyError: {e}")
+                        logger.debug(f"Bracket KeyError: {e}")
                     except:
                         logger.error(traceback.format_exc())
             else:
@@ -192,7 +192,7 @@ class Bracket():
                             targetIdW = 1
                         _set.winNextSlot = targetIdW
                     except KeyError as e:
-                        logger.warning(f"Bracket KeyError: {e}")
+                        logger.debug(f"Bracket KeyError: {e}")
                     except Exception as e:
                         logger.error(e)
 

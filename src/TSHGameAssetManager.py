@@ -49,7 +49,8 @@ class TSHGameAssetManager(QObject):
         self.skinLoaderLock = QMutex()
 
     def UiMounted(self):
-        self.DownloadStartGGCharacters()
+        # Skip downloading StartGG characters — MSB assets are bundled locally
+        # and this downloads 3.5MB of data for 90 games on every launch
         self.LoadGames()
 
     def DownloadStartGGCharacters(self):
@@ -501,13 +502,16 @@ class TSHGameAssetManager(QObject):
         self.assetsLoaderThread.lock = self.assetsLoaderLock
         self.assetsLoaderThread.start(QThread.Priority.HighestPriority)
 
-        # Setup startgg character id to character name
-        sggcharacters = orjson.loads(
-            open('./assets/characters.json', 'rb').read())
-        self.startgg_id_to_character = {}
-
-        for c in sggcharacters.get("entities", {}).get("character", []):
-            self.startgg_id_to_character[str(c.get("id"))] = c
+        # Only load startgg character mappings if not already loaded
+        # This parses a 3.5MB JSON file — skip if already cached
+        if not self.startgg_id_to_character:
+            try:
+                sggcharacters = orjson.loads(
+                    open('./assets/characters.json', 'rb').read())
+                for c in sggcharacters.get("entities", {}).get("character", []):
+                    self.startgg_id_to_character[str(c.get("id"))] = c
+            except Exception as e:
+                logger.error(f"Could not load characters.json: {e}")
 
         # self.programState["asset_path"] = self.selectedGame.get("path")
         # self.programState["game"] = game
@@ -624,7 +628,6 @@ class TSHGameAssetManager(QObject):
             for c in self.characters.keys():
                 item = QStandardItem()
                 item.setData(c, Qt.ItemDataRole.EditRole)
-                print(c)
                 item.setIcon(
                     QIcon(QPixmap.fromImage(self.stockIcons[c][0]))
                 )
@@ -658,7 +661,6 @@ class TSHGameAssetManager(QObject):
             for c in self.variants.keys():
                 item = QStandardItem()
                 item.setData(c, Qt.ItemDataRole.EditRole)
-                print(c)
 
                 data = {
                     "name": self.variants[c].get("export_name"),

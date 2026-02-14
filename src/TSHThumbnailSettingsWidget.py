@@ -515,24 +515,18 @@ class TSHThumbnailSettingsWidget(QDockWidget):
             self.GeneratePreview()
         ])
 
-        self.GeneratePreview()
-
+        # Skip generating a preview during init — the onLoad signal will
+        # trigger GeneratePreview() once the game assets are actually loaded.
+        # Just show a cached preview if one exists from a previous session.
         tmp_path = TSHResolve("tmp/thumbnail")
         tmp_file = f"{tmp_path}/template.jpg"
         Path(tmp_path).mkdir(parents=True, exist_ok=True)
 
-        # if preview not there
-        if not os.path.isfile(tmp_file):
+        if os.path.isfile(tmp_file):
             try:
-                tmp_file = thumbnail.generate(
-                    isPreview=True, settingsManager=SettingsManager, gameAssetManager=TSHGameAssetManager)
-            except Exception as e:
-                self.DisplayErrorMessage(traceback.format_exc())
-
-        try:
-            self.preview.setPixmap(QPixmap(tmp_file))
-        except:
-            logger.error(traceback.format_exc())
+                self.preview.setPixmap(QPixmap(tmp_file))
+            except:
+                logger.error(traceback.format_exc())
 
         self.updateFromSettings()
 
