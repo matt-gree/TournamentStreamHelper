@@ -33,12 +33,11 @@ class WebServer(QThread):
     app.config['CORS_HEADERS'] = 'Content-Type'
     actions = None
 
-    def __init__(self, parent=None, stageWidget=None, commentaryWidget: TSHCommentaryWidget=None) -> None:
+    def __init__(self, parent=None, commentaryWidget: TSHCommentaryWidget=None) -> None:
         super().__init__(parent)
         WebServer.actions = WebServerActions(
             parent=parent,
             scoreboard=TSHScoreboardManager.instance,
-            stageWidget=stageWidget,
             commentaryWidget=commentaryWidget
         )
         self.host_name = "0.0.0.0"
@@ -58,83 +57,6 @@ class WebServer(QThread):
 
     def emit(self, event, *args, **kwargs):
         WebServer.socketio.emit(event, *args, **kwargs)
-
-    @app.route('/ruleset')
-    def ruleset():
-        return WebServer.actions.ruleset()
-
-    @socketio.on('ruleset')
-    def ws_ruleset(message):
-        emit('ruleset', WebServer.actions.ruleset(), json=True)
-
-    @app.route('/stage_strike_stage_clicked', methods=['POST'])
-    def stage_clicked():
-        return WebServer.actions.stage_clicked(request.get_data())
-
-    @socketio.on('stage_strike_stage_clicked')
-    def ws_stage_clicked(message):
-        emit('stage_strike_stage_clicked',
-             WebServer.actions.stage_clicked(message))
-
-    @app.route('/stage_strike_confirm_clicked', methods=['POST'])
-    def confirm_clicked():
-        return WebServer.actions.confirm_clicked()
-
-    @socketio.on('stage_strike_confirm_clicked')
-    def ws_confirm_clicked(message):
-        emit('stage_strike_confirm_clicked',
-             WebServer.actions.confirm_clicked())
-
-    @app.route('/stage_strike_rps_win', methods=['POST'])
-    def rps_win():
-        return WebServer.actions.rps_win(orjson.loads(request.get_data()).get("winner"))
-
-    @socketio.on('stage_strike_rps_win')
-    def ws_rps_win(message):
-        emit('stage_strike_rps_win', WebServer.actions.rps_win(
-            orjson.loads(message).get("winner")))
-
-    @app.route('/stage_strike_match_win', methods=['POST'])
-    def match_win():
-        return WebServer.actions.match_win(orjson.loads(request.get_data()).get("winner"))
-
-    @socketio.on('stage_strike_match_win')
-    def ws_match_win(message):
-        emit('stage_strike_match_win', WebServer.actions.match_win(
-            orjson.loads(message).get("winner")))
-
-    @app.route('/stage_strike_set_gentlemans', methods=['POST'])
-    def set_gentlemans():
-        return WebServer.actions.set_gentlemans(orjson.loads(request.get_data()).get("value"))
-
-    @socketio.on('stage_strike_set_gentlemans')
-    def ws_set_gentlemans(message):
-        emit('stage_strike_set_gentlemans', WebServer.actions.set_gentlemans(
-            orjson.loads(message).get("value")))
-
-    @app.route('/stage_strike_undo', methods=['POST'])
-    def stage_strike_undo():
-        return WebServer.actions.stage_strike_undo()
-
-    @socketio.on('stage_strike_undo')
-    def ws_stage_strike_undo(message):
-        emit('stage_strike_undo', WebServer.actions.stage_strike_undo())
-
-    @app.route('/stage_strike_redo', methods=['POST'])
-    def stage_strike_redo():
-        return WebServer.actions.stage_strike_redo()
-
-    @socketio.on('stage_strike_redo')
-    def ws_stage_strike_redo(message):
-        emit('stage_strike_redo', WebServer.actions.stage_strike_redo())
-
-    @app.route('/stage_strike_reset', methods=['POST'])
-    def reset():
-        return WebServer.actions.reset()
-
-    @socketio.on('stage_strike_reset')
-    def ws_reset(message):
-        emit('stage_strike_reset', WebServer.actions.reset())
 
     @app.route('/score', methods=['POST'])
     def post_score():

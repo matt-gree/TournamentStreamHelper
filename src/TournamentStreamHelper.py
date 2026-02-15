@@ -123,7 +123,6 @@ from .Helpers.TSHCountryHelper import TSHCountryHelper
 from .TSHScoreboardManager import TSHScoreboardManager
 from src.TSHAssetDownloader import TSHAssetDownloader
 from src.TSHAboutWidget import TSHAboutWidget
-from .TSHScoreboardStageWidget import TSHScoreboardStageWidget
 from src.TSHWebServer import WebServer
 # autopep8: on
 
@@ -279,7 +278,6 @@ def remove_accents_lower(input_str):
 
 class WindowSignals(QObject):
     StopTimer = Signal()
-    ExportStageStrike = Signal(object)
     DetectGame = Signal(int)
     SetupAutocomplete = Signal()
     UiMounted = Signal()
@@ -380,13 +378,6 @@ class Window(QMainWindow):
         TSHScoreboardManager.instance.setWindowTitle(
             QApplication.translate("app", "Scoreboard Manager"))
 
-        self.stageWidget = TSHScoreboardStageWidget()
-        self.stageWidget.setObjectName(
-            QApplication.translate("app", "Stage"))
-        self.addDockWidget(
-            Qt.DockWidgetArea.BottomDockWidgetArea, self.stageWidget)
-        self.dockWidgets.append(self.stageWidget)
-
         commentary = TSHCommentaryWidget()
         commentary.setWindowIcon(QIcon('assets/icons/mic.svg'))
         commentary.setObjectName(QApplication.translate("app", "Commentary"))
@@ -394,7 +385,7 @@ class Window(QMainWindow):
         self.dockWidgets.append(commentary)
 
         self.webserver = WebServer(
-            parent=None, stageWidget=self.stageWidget, commentaryWidget=commentary)
+            parent=None, commentaryWidget=commentary)
         StateManager.webServer = self.webserver
         self.webserver.start()
 
@@ -409,7 +400,6 @@ class Window(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, notes)
         self.dockWidgets.append(notes)
 
-        self.tabifyDockWidget(self.scoreboard, self.stageWidget)
         self.tabifyDockWidget(self.scoreboard, commentary)
         self.tabifyDockWidget(self.scoreboard, tournamentInfo)
         self.tabifyDockWidget(self.scoreboard, playerList)
@@ -545,7 +535,6 @@ class Window(QMainWindow):
             "app", "Toggle widgets") + menu_margin, self.optionsBt.menu())
         self.optionsBt.menu().addMenu(toggleWidgets)
         toggleWidgets.addAction(self.scoreboard.toggleViewAction())
-        toggleWidgets.addAction(self.stageWidget.toggleViewAction())
         toggleWidgets.addAction(commentary.toggleViewAction())
         toggleWidgets.addAction(tournamentInfo.toggleViewAction())
         toggleWidgets.addAction(playerList.toggleViewAction())

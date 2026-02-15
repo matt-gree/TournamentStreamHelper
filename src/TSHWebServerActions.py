@@ -22,116 +22,14 @@ log.setLevel(logging.ERROR)
 
 
 class WebServerActions(QThread):
-    def __init__(self, parent=None, scoreboard=None, stageWidget=None, commentaryWidget: TSHCommentaryWidget=None) -> None:
+    def __init__(self, parent=None, scoreboard=None, commentaryWidget: TSHCommentaryWidget=None) -> None:
         super().__init__(parent)
         self.scoreboard = scoreboard
-        self.stageWidget = stageWidget
         self.commentaryWidget = commentaryWidget
         self.threadPool = QThreadPool()
 
     def program_state(self):
         return StateManager.state
-
-    def ruleset(self):
-        data = {}
-
-        data["ruleset"] = StateManager.Get(f"score.ruleset", {})
-
-        # Add webserver base path
-        data.update({
-            "basedir": os.path.abspath(".")
-        })
-
-        if self.scoreboard.GetTabAmount() < 1:
-            return data
-
-        # Add player names
-        teams = [1, 2]
-        if self.scoreboard.GetScoreboard(1).teamsSwapped:
-            teams.reverse()
-
-        for i, t in enumerate(teams):
-            if StateManager.Get(f"score.1.team.{i+1}.teamName"):
-                data.update({
-                    f"p{t}": StateManager.Get(f"score.1.team.{i+1}.teamName")
-                })
-            else:
-                names = [p.get("name") for p in StateManager.Get(
-                    f"score.1.team.{i+1}.player", {}).values() if p.get("name")]
-
-                data.update({
-                    f"p{t}": " / ".join(names)
-                })
-
-        # Add set data
-        data.update({
-            "best_of": StateManager.Get(f"score.1.best_of"),
-            "match": StateManager.Get(f"score.1.match"),
-            "phase": StateManager.Get(f"score.1.phase"),
-            "state": StateManager.Get(f"score.1.stage_strike", {})
-        })
-
-        return data
-
-    def stage_clicked(self, data):
-        self.stageWidget.stageStrikeLogic.StageClicked(
-            orjson.loads(data))
-        return "OK"
-
-    def confirm_clicked(self):
-        self.stageWidget.stageStrikeLogic.ConfirmClicked()
-        return "OK"
-
-    def rps_win(self, winner):
-        self.stageWidget.stageStrikeLogic.RpsResult(
-            int(winner))
-        return "OK"
-
-    def match_win(self, winner):
-        self.stageWidget.stageStrikeLogic.MatchWinner(
-            int(winner))
-        # Web server updating score here
-        self.UpdateScore()
-        return "OK"
-
-    def set_gentlemans(self, value):
-        self.stageWidget.stageStrikeLogic.SetGentlemans(
-            value)
-        return "OK"
-
-    def stage_strike_undo(self):
-        self.stageWidget.stageStrikeLogic.Undo()
-        self.UpdateScore()
-        return "OK"
-
-    def stage_strike_redo(self):
-        self.stageWidget.stageStrikeLogic.Redo()
-        self.UpdateScore()
-        return "OK"
-
-    def reset(self):
-        self.stageWidget.stageStrikeLogic.Initialize()
-        self.UpdateScore()
-        return "OK"
-
-    def UpdateScore(self):
-        if not SettingsManager.Get("general.control_score_from_stage_strike", True):
-            return
-
-        score = [
-            len(self.stageWidget.stageStrikeLogic.CurrentState(
-            ).stagesWon[0]),
-            len(self.stageWidget.stageStrikeLogic.CurrentState(
-            ).stagesWon[1]),
-        ]
-
-        logger.info(f"We're supposed to update the score {score}")
-
-        self.scoreboard.GetScoreboard(1).signals.ChangeSetData.emit({
-            "team1score": score[0],
-            "team2score": score[1],
-            "reset_score": True
-        })
 
     def post_score(self, data):
         score = orjson.loads(data)
