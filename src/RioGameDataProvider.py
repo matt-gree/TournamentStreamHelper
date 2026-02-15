@@ -182,7 +182,8 @@ class RioGameDataProvider(QObject):
             'tag': game_mode,
             'by_user': 1
         }
-        stats = stats_endpoint(self.rio_api_manager, params).get('Stats', {})
+        result = stats_endpoint(self.rio_api_manager, params)
+        stats = result.get('Stats', {}) if result else {}
 
         self.away_server_stats = stats.get(away_player, {})
         self.home_server_stats = stats.get(home_player, {})

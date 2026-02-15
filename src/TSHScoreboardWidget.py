@@ -22,7 +22,9 @@ from .Helpers.TSHLocaleHelper import TSHLocaleHelper
 from src.RioGameDataProvider import RioGameDataProvider
 
 import json
+import os
 import time
+from loguru import logger
 from pathlib import Path
 from pyrio.lookup import LookupDicts as rioLU 
 

@@ -903,10 +903,10 @@ class Window(QMainWindow):
         except:
             pass
 
-        # Stop the Flask/SocketIO web server thread
+        # Stop the Flask/SocketIO web server thread (non-blocking since
+        # os._exit below will tear everything down).
         if hasattr(self, "webserver") and self.webserver:
             self.webserver.shutdown()
-            self.webserver.wait(3000)  # wait up to 3s for thread to finish
 
         # Force-exit after Qt cleanup to avoid Shiboken atexit deadlock.
         # During Python finalization, Shiboken tries to destroy QStandardItem

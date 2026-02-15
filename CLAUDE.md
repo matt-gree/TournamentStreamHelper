@@ -288,6 +288,23 @@ No automated test suite exists. Manual testing:
 
 ---
 
+## Disconnected Features
+
+The following upstream TSH features have been **disconnected from the app** to reduce startup overhead and simplify the UI. The underlying code is preserved in the repo and can be reconnected if needed.
+
+### Thumbnail System (disconnected)
+- **Files preserved:** `TSHThumbnailSettingsWidget.py`, `thumbnail/main_generate_thumbnail.py`, `thumbnail/` module
+- **What was removed:** Import and widget creation in `TournamentStreamHelper.py`, "Generate Thumbnail" button and `GenerateThumbnail()` method in `TSHScoreboardWidget.py`, `/scoreboard<N>-get-thumbnail-<fmt>` web route, `get_thumbnail()` in `TSHWebServerActions.py`
+- **Why:** Thumbnail generation ran at startup (font loading, image compositing, 219ms font alias penalty) and is not currently used for MSB
+
+### Stage Strike / Ruleset System (disconnected)
+- **Files preserved:** `TSHScoreboardStageWidget.py` (with improved cache-based ruleset loading), `TSHStageStrikeLogic.py`, `stage_strike_app/` frontend
+- **What was removed:** Stage tab in main window, all stage strike web routes and SocketIO events (10 HTTP + 8 WS), `ruleset()` and stage strike methods in `TSHWebServerActions.py`, `stageWidget` parameter from `WebServer`/`WebServerActions`
+- **Why:** MSB doesn't have start.gg rulesets; the old code also downloaded rulesets from start.gg on every launch and had an infinite retry loop on failure
+- **Note:** `TSHScoreboardStageWidget.py` was improved before disconnection — it now loads from a cached `assets/rulesets.json` on init (instead of hitting the network) and has a "Refresh start.gg Rulesets" button for on-demand downloading
+
+---
+
 ## Key Files for Common Tasks
 
 | Task | Files to Modify |

@@ -1,4 +1,4 @@
-from multiprocessing import Lock
+import threading
 import os
 import json
 from qtpy.QtGui import *
@@ -23,7 +23,7 @@ class TSHPlayerDB:
     model: QStandardItemModel = None
     fieldnames = ["prefix", "gamerTag", "name", "twitter",
                   "country_code", "state_code", "mains", "pronoun", "custom_textbox"] # Please always add the new fields at the end of the list
-    modelLock = Lock()
+    modelLock = threading.Lock()
 
     def LoadDB():
         try:
