@@ -39,6 +39,16 @@ if parse(qtpy.QT_VERSION).major == 6:
 
 App = QApplication(sys.argv)
 
+# Register Roboto Condensed early to avoid 219ms font alias penalty.
+# Without this, Qt sees an unknown family name and populates all font
+# aliases before falling back.
+_font_id = QFontDatabase.addApplicationFont("./assets/font/RobotoCondensed.ttf")
+if _font_id >= 0:
+    _font_families = QFontDatabase.applicationFontFamilies(_font_id)
+    _roboto_family = _font_families[0] if _font_families else "Roboto Condensed"
+else:
+    _roboto_family = "Roboto Condensed"
+
 fmt = ("<green>{time:YYYY-MM-DD HH:mm:ss}</green> " +
        "| <level>{level}</level> | " +
        "<yellow>{file}</yellow>:<blue>{function}</blue>:<cyan>{line}</cyan> " +
@@ -317,8 +327,7 @@ class Window(QMainWindow):
         if os.path.exists("./TSH_old.exe"):
             os.remove("./TSH_old.exe")
 
-        self.font_small = QFont(
-            "./assets/font/RobotoCondensed.ttf", pointSize=8)
+        self.font_small = QFont(_roboto_family, pointSize=8)
 
         self.threadpool = QThreadPool()
         self.saveMutex = QMutex()
@@ -786,7 +795,9 @@ class Window(QMainWindow):
         self._updateChecker = UpdateCheckerThread(self)
         self._updateChecker.start()
 
-        self.ReloadGames()
+        # ReloadGames() is not called here because the game list is empty
+        # at this point. It will be triggered by the onLoadAssets signal
+        # once TSHGameAssetManager.LoadGames() finishes on its background thread.
 
         self.qtSettings = QSettings("joao_shino", "TournamentStreamHelper")
 

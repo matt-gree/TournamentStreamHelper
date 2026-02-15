@@ -644,6 +644,9 @@ class TSHScoreboardPlayerWidget(QGroupBox):
             model = QStandardItemModel()
 
             for team_name in team_names:
+                if not team_name or not team_name.strip():
+                    continue
+
                 item = QStandardItem()
                 item.setText(team_name)
                 item.setData(team_name, Qt.ItemDataRole.UserRole)

@@ -92,8 +92,8 @@ class TSHAssetDownloader(QObject):
         self.select.setEditable(True)
         self.select.completer().setFilterMode(Qt.MatchFlag.MatchContains)
         self.select.completer().setCompletionMode(QCompleter.PopupCompletion)
-        self.font_small = QFont(
-            "./assets/font/RobotoCondensed.ttf", pointSize=8)
+        from .TournamentStreamHelper import _roboto_family
+        self.font_small = QFont(_roboto_family, pointSize=8)
         self.select.setFont(self.font_small)
         self.select.setModel(QStandardItemModel())
         self.preDownloadDialogue.layout().addWidget(self.select)
