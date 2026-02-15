@@ -131,7 +131,7 @@ class TSHScoreboardStageWidget(QDockWidget):
         self.labelValidation.setText("")
 
         self.signals.rulesets_changed.connect(self.LoadRulesets)
-        self.LoadStartggRulesets()
+        self.LoadCachedStartggRulesets()
         self.LoadRuleset()
 
         TSHGameAssetManager.instance.signals.onLoad.connect(self.SetupOptions)
@@ -145,6 +145,12 @@ class TSHScoreboardStageWidget(QDockWidget):
         self.btDelete.setIcon(QIcon('assets/icons/cancel.svg'))
         self.btClear = self.findChild(QPushButton, "btClear")
         self.btClear.setIcon(QIcon('assets/icons/undo.svg'))
+
+        self.btRefreshStartgg = QPushButton(
+            QApplication.translate("app", "Refresh start.gg Rulesets"))
+        self.btRefreshStartgg.setIcon(QIcon('assets/icons/db.svg'))
+        self.btSave.parent().layout().addWidget(self.btRefreshStartgg)
+        self.btRefreshStartgg.clicked.connect(self.LoadStartggRulesets)
 
         self.rulesetName.textChanged.connect(self.UpdateBottomButtons)
         self.btSave.clicked.connect(self.SaveRuleset)
@@ -517,34 +523,39 @@ class TSHScoreboardStageWidget(QDockWidget):
 
         return ruleset
 
-    def QueryRequests(self, url=None, type=None, headers=None, jsonParams=None, params=None):
-        requestCode = 0
-        data = None
-        while requestCode != 200:
-            data = type(
-                url,
-                headers=headers,
-                json=jsonParams,
-                params=params
-            )
-            requestCode = data.status_code
-        return orjson.loads(data.text)
+    def LoadCachedStartggRulesets(self):
+        try:
+            with open('./assets/rulesets.json', 'rb') as f:
+                self.startggRulesets = orjson.loads(f.read())
+                logger.info(f"Loaded {len(self.startggRulesets)} cached start.gg rulesets")
+        except FileNotFoundError:
+            self.startggRulesets = []
+        except Exception as e:
+            self.startggRulesets = []
+            logger.warning(f"Failed to load cached rulesets: {e}")
 
     def LoadStartggRulesets(self):
         try:
             class DownloadThread(QThread):
-                query = self.QueryRequests
                 def run(self):
-                        data = self.query(
+                    try:
+                        resp = requests.get(
                             "https://www.start.gg/api/-/gg_api./rulesets",
-                            type=requests.get
+                            timeout=10
                         )
+                        resp.raise_for_status()
+                        data = orjson.loads(resp.text)
                         rulesets = deep_get(data, "entities.ruleset")
-                        open('./assets/rulesets.json',
-                             'wb').write(orjson.dumps(rulesets, option=orjson.OPT_INDENT_2))
-                        self.parent().startggRulesets = rulesets
-                        logger.info("startgg Rulesets downloaded from startgg")
-                        self.parent().signals.rulesets_changed.emit()
+                        if rulesets:
+                            open('./assets/rulesets.json',
+                                 'wb').write(orjson.dumps(rulesets, option=orjson.OPT_INDENT_2))
+                            self.parent().startggRulesets = rulesets
+                            logger.info(f"Downloaded {len(rulesets)} rulesets from start.gg")
+                            self.parent().signals.rulesets_changed.emit()
+                        else:
+                            logger.warning("start.gg returned no rulesets")
+                    except Exception as e:
+                        logger.warning(f"Failed to download start.gg rulesets: {e}")
             downloadThread = DownloadThread(self)
             downloadThread.start()
         except Exception as e:
