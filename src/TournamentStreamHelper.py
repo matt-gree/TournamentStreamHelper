@@ -908,6 +908,12 @@ class Window(QMainWindow):
             self.webserver.shutdown()
             self.webserver.wait(3000)  # wait up to 3s for thread to finish
 
+        # Force-exit after Qt cleanup to avoid Shiboken atexit deadlock.
+        # During Python finalization, Shiboken tries to destroy QStandardItem
+        # wrappers which requires the GIL, but background threads (StateManager
+        # export, image downloads) may still hold it, causing a hang.
+        QApplication.instance().aboutToQuit.connect(lambda: os._exit(0))
+
         # Schedule quit on the event loop so timers can be cleaned up on
         # their owning thread, avoiding "Timers cannot be stopped from
         # another thread" warnings.
