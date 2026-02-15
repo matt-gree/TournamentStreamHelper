@@ -111,6 +111,20 @@ class SettingsWidget(QWidget):
             self.layout().addWidget(resetButton, lastRow, 2)
             return
         
+        elif type == "combobox":
+            settingWidget = QComboBox()
+            # defaultValue is a list of options; first item is the default
+            options = defaultValue if isinstance(defaultValue, list) else [defaultValue]
+            settingWidget.addItems(options)
+            saved = SettingsManager.Get(self.settingsBase + "." + setting, options[0])
+            idx = settingWidget.findText(saved)
+            if idx >= 0:
+                settingWidget.setCurrentIndex(idx)
+            settingWidget.currentTextChanged.connect(
+                lambda val, s=setting: SettingsManager.Set(self.settingsBase + "." + s, val))
+            resetButton.clicked.connect(
+                lambda bt=None, sw=settingWidget, opts=options: sw.setCurrentIndex(0))
+
         elif type == "button":
             settingWidget = QPushButton(name)
             # When clicked, call the callback function provided

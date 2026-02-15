@@ -72,6 +72,10 @@ class RioGameDataProvider(QObject):
         self.threadPool = QThreadPool()
         self.away_server_stats = {}
         self.home_server_stats = {}
+        self._prev_player_sides = {}  # {"PlayerName": 0, "OtherPlayer": 1}
+        self._prev_inning = None
+        self._sides_swapped = False  # Persists swap decision for entire game
+        self._user_overridden = False  # True when user manually swaps mid-game
 
         if self.hud_file:
             self.hud_watcher = RioHUDWatcher(self.hud_file)
@@ -237,8 +241,8 @@ class RioGameDataProvider(QObject):
         data = {"entrants": [[{}], [{}]]}
 
         try:
-            data["team0score"] = game_json["away_score"]
-            data["team1score"] = game_json["home_score"]
+            data["team1score"] = game_json["away_score"]
+            data["team2score"] = game_json["home_score"]
 
             for i in range(2):
                 team = "home" if i == 1 else "away"
@@ -279,8 +283,85 @@ class RioGameDataProvider(QObject):
 
         return data
 
+    def _is_new_game(self, current_inning):
+        """Detect new game by inning number decreasing."""
+        if self._prev_inning is None:
+            return True
+        return current_inning < self._prev_inning
+
+    def _swap_entrants(self, parsed):
+        """Swap entrants[0] and entrants[1] along with their scores."""
+        parsed['entrants'].reverse()
+        parsed['team1score'], parsed['team2score'] = parsed['team2score'], parsed['team1score']
+        return parsed
+
+    def toggle_sides_swapped(self):
+        """Called by UI swap buttons to toggle the persistent swap flag.
+        Also sets _user_overridden so the pin doesn't fight the user's choice
+        until the next game starts."""
+        self._sides_swapped = not self._sides_swapped
+        self._user_overridden = True
+        logger.info(f"[RIO] Manual swap toggled, sides_swapped={self._sides_swapped}, user override active")
+
+    def _preserve_player_sides(self, parsed):
+        """Ensure consistent team sides across all HUD events in a game.
+
+        On new game (inning decreased):
+          - Reset _user_overridden flag
+          - Pinned player or back-to-back detection determines initial sides
+          - Set _sides_swapped flag for the duration of this game
+
+        On mid-game events:
+          - If user manually swapped (_user_overridden), respect their choice
+            via _sides_swapped — pin does NOT fight back
+          - Otherwise apply _sides_swapped (which pin or auto-detect set)
+        """
+        current_inning = parsed.get('inning', 1)
+        player0 = parsed['entrants'][0][0].get('rioName', '')
+        player1 = parsed['entrants'][1][0].get('rioName', '')
+
+        # Check pinned player setting
+        pinned_player = SettingsManager.Get("project_rio.pinned_player", "").strip()
+        pinned_side = SettingsManager.Get("project_rio.pinned_side", "Team 1")
+        pinned_index = 0 if pinned_side == "Team 1" else 1
+
+        if self._is_new_game(current_inning):
+            # New game — reset user override, re-evaluate sides
+            self._user_overridden = False
+            self._sides_swapped = False
+
+            if pinned_player:
+                # Pin determines initial sides for new game
+                need_swap = (
+                    (player0 == pinned_player and pinned_index == 1) or
+                    (player1 == pinned_player and pinned_index == 0)
+                )
+                if need_swap:
+                    self._sides_swapped = True
+                    logger.info(f"[RIO] New game: pinned player '{pinned_player}' placed on {pinned_side}")
+            else:
+                # No pin — check back-to-back detection
+                if self._prev_player_sides:
+                    prev_side_0 = self._prev_player_sides.get(player0)
+                    prev_side_1 = self._prev_player_sides.get(player1)
+                    if prev_side_0 == 1 or prev_side_1 == 0:
+                        self._sides_swapped = True
+                        logger.info(f"[RIO] New game: auto-swapping sides to keep returning player in place")
+
+        # Apply the current swap decision (set by new-game logic or user override)
+        if self._sides_swapped:
+            parsed = self._swap_entrants(parsed)
+
+        # Update tracking (re-read after potential swap)
+        player0 = parsed['entrants'][0][0].get('rioName', '')
+        player1 = parsed['entrants'][1][0].get('rioName', '')
+        self._prev_player_sides = {player0: 0, player1: 1}
+        self._prev_inning = current_inning
+        return parsed
+
     def _on_hud_game_update(self, game_json):
         parsed = self.parse_game_data(game_json)
+        parsed = self._preserve_player_sides(parsed)
         self.current_game = parsed
         self.live_game_selected.emit(parsed)
 

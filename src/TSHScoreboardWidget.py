@@ -775,8 +775,12 @@ class TSHScoreboardWidget(QWidget):
         finally:
             StateManager.Set(
                 f"score.{self.scoreboardNumber}.teamsSwapped", self.teamsSwapped)
-            
+
             self.rio_savedLiveData['entrants'].reverse()
+
+            # Toggle the persistent swap flag so subsequent HUD events
+            # continue to reflect this manual swap.
+            RioGameDataProvider.instance.toggle_sides_swapped()
 
             for p in self.playerWidgets:
                 p.dataLock.release()
@@ -877,7 +881,6 @@ class TSHScoreboardWidget(QWidget):
 
 
     def OnSwapRioDataClicked(self):
-        print(StateManager.Get(f'score.{self.scoreboardNumber}.game_mode'))
         data = self.rio_savedLiveData
 
         StateManager.BlockSaving()
@@ -890,10 +893,12 @@ class TSHScoreboardWidget(QWidget):
 
         if not data.get("entrants"):
             return
-        
+
         data['entrants'].reverse()
 
-        logger.debug(f'[RIO] {data}')
+        # Toggle the persistent swap flag so subsequent HUD events
+        # continue to reflect this manual swap.
+        RioGameDataProvider.instance.toggle_sides_swapped()
 
         for t, team in enumerate(data["entrants"]):
             target_team_widgets = teamInstances[t]

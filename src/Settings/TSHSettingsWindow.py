@@ -204,6 +204,35 @@ class TSHSettingsWindow(QDialog):
             QApplication.translate("settings.rio", "Click to update the active game modes file.")
         ))
 
+        rioSettings.append((
+            QApplication.translate("settings.rio", "Pinned Player Name"),
+            "pinned_player",
+            "textbox",
+            "",
+            None,
+            QApplication.translate(
+                "settings.rio", "Player name to always pin to a specific side (e.g. your own tag).")
+        ))
+
+        rioSettings.append((
+            QApplication.translate("settings.rio", "Pinned Player Side"),
+            "pinned_side",
+            "combobox",
+            ["Team 1", "Team 2"],
+            None,
+            QApplication.translate(
+                "settings.rio", "Which side the pinned player should always appear on.")
+        ))
+
+        rioSettings.append((
+            QApplication.translate("settings.rio", "Only apply pin to HUD games"),
+            "pinned_hud_only",
+            "checkbox",
+            True,
+            None,
+            QApplication.translate(
+                "settings.rio", "When checked, the pinned player setting only applies to games loaded from the HUD file.")
+        ))
 
         self.add_setting_widget(QApplication.translate(
             "settings", "Project Rio"), SettingsWidget("project_rio", rioSettings))
